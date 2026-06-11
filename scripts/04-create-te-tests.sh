@@ -49,16 +49,33 @@ AGENT_HOSTNAME="${AGENT_HOSTNAME:-${TEST_PREFIX}}"
 # set_test_headers TEST_ID TEST_NAME
 # Updates a test to inject X-TE-Test-Id and X-TE-Test-Name as custom headers
 # so stamp_te_span() in each service can read them and stamp the OTel span.
+# Uses a full GET→merge→PUT cycle to preserve all existing fields (especially
+# distributedTracing=true, which a partial PUT would silently reset to false).
 set_test_headers() {
   local test_id="$1"
   local test_name="$2"
   [ -z "${test_id}" ] && return
-  curl -s -X PUT "${TE_API}/${test_id}" \
-    -H "Content-Type: application/json" \
-    -H "Authorization: Bearer ${TE_BEARER_TOKEN}" \
-    -d "{\"customHeaders\":{\"root\":{\"X-TE-Test-Id\":\"${test_id}\",\"X-TE-Test-Name\":\"${test_name}\"}}}" \
-    > /dev/null
-  echo "    Custom headers set on test ${test_id}: ${test_name}" >&2
+  python3 - "${test_id}" "${test_name}" "${TE_BEARER_TOKEN}" "${TE_AGENT_ID}" << 'PYEOF'
+import json, sys, urllib.request, urllib.error
+tid, name, token, agent_id = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+hdrs = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+url = f"https://api.thousandeyes.com/v7/tests/http-server/{tid}"
+with urllib.request.urlopen(urllib.request.Request(url, headers=hdrs)) as r:
+    test = json.loads(r.read())
+body = {k: v for k, v in test.items() if not k.startswith("_") and k not in
+        ("testId","type","createdBy","createdDate","modifiedBy","modifiedDate",
+         "savedEvent","liveShare","alertsEnabled","bgpMeasurements","usePublicBgp")}
+body["distributedTracing"] = True
+body["agents"] = [{"agentId": int(agent_id)}]
+body["customHeaders"] = {"root": {"X-TE-Test-Id": tid, "X-TE-Test-Name": name}}
+req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=hdrs, method="PUT")
+try:
+    with urllib.request.urlopen(req) as r:
+        json.loads(r.read())
+    print(f"    Custom headers + distributedTracing set on test {tid}: {name}", file=sys.stderr)
+except urllib.error.HTTPError as e:
+    print(f"    ERROR setting headers on {tid}: {e.read().decode()}", file=sys.stderr)
+PYEOF
 }
 
 # create_or_get_test NAME URL [DISTRIBUTED_TRACING]
