@@ -126,11 +126,18 @@ export TE_ACCOUNT_TOKEN=""                          # optional — auto-fetched 
 export AGENT_HOSTNAME="your-name"                  # becomes te-agent-your-name in TE dashboard
 export TEST_PREFIX="your-name"                     # prefix for all TE test names
 
+# Travel planner LLM mode: "mock" (default, no API key), "openai", or "bedrock"
+export LLM_PROVIDER=mock
+
 chmod +x deploy.sh scripts/*.sh
 ./deploy.sh
 ```
 
-The script auto-fetches the Account Group Token, deploys the agent, waits for registration, and creates all tests. Total deployment time: ~5–8 minutes (TE agent registration takes 2–3 min after pod start).
+The script deploys: Splunk OTel Collector → PetClinic → Travel Planner AI agents → ThousandEyes agent → ThousandEyes tests. Total deployment time: ~8–12 minutes (TE agent registration takes 2–3 min after pod start).
+
+After deployment, complete these **one-time manual steps** in each tool (see [Distributed Tracing](#distributed-tracing-apm--thousandeyes-bi-directional-drilldowns) for details):
+- **Splunk**: Create a Global Data Link for `te.test.id` → ThousandEyes URL
+- **ThousandEyes**: Create a Splunk APM Connector (requires Account Admin)
 
 ## What Gets Deployed
 
@@ -191,6 +198,46 @@ LLM_PROVIDER=bedrock AWS_DEFAULT_REGION=us-east-1 bash scripts/02-deploy-travel-
 | `[prefix] LLM - OpenAI API` | `api.openai.com` | Agent-to-LLM connectivity |
 
 The TE agent runs inside the same cluster as the travel planner, so its latency measurements reflect **exactly what the agents experience** — not what the network looks like from outside. When APM shows slow LLM response times, TE tells you whether the slowness is network-level or application-level.
+
+### Distributed Tracing: APM ↔ ThousandEyes Bi-directional Drilldowns
+
+The travel planner is configured for full bi-directional correlation between Splunk APM spans and ThousandEyes test results.
+
+#### TE → APM (ThousandEyes initiates the trace)
+
+1. All 5 agent `/health` tests have `distributedTracing: true` — TE injects B3 headers into every request
+2. `04-create-te-tests.sh` also configures `X-TE-Test-Id` and `X-TE-Test-Name` custom headers on each test
+3. Each service has a `B3Format` propagator and `ParentBased(ALWAYS_ON)` sampler (`shared/otel_setup.py`)
+4. Each `/health` view function calls `stamp_te_span()` which copies those custom headers onto the active OTel span as `te.test.id`, `te.test.name`, and `te.test.url`
+
+Result: TE-originated health checks appear in Splunk APM as full distributed traces with ThousandEyes metadata embedded in the span.
+
+#### APM → TE (Splunk APM links back to ThousandEyes)
+
+The orchestrator stamps every `agent.call.*` span with `te.test.id`, `te.test.name`, and `te.test.url` from the `te-test-ids` ConfigMap (populated by `04-create-te-tests.sh`). A Splunk Global Data Link renders `te.test.id` as a clickable **"View in ThousandEyes"** button in the span detail panel.
+
+**Splunk Global Data Links setup (one-time):**
+
+In Splunk Observability Cloud → **Settings → Global Data Links → New Link**:
+
+| Field | Value |
+|-------|-------|
+| Link label | `View in ThousandEyes` |
+| Show on | Metric or property name |
+| Metric/property name | `te.test.id` |
+| URL | `https://app.thousandeyes.com/view/tests/?testId={{value}}` |
+
+#### ThousandEyes APM Connector (one-time, requires Account Admin)
+
+Enables a **"View in APM"** link on ThousandEyes test result pages. In ThousandEyes UI:
+
+**Manage → Integrations → Integrations 2.0 → Connectors → New Connector**
+
+- Type: Generic Connector, Preset: **Splunk Observability APM**
+- Target URL: `https://api.<REALM>.signalfx.com`
+- Header: `X-SF-Token: <api-scope-access-token>`
+
+> Requires Account Admin in ThousandEyes. Cannot be created via the API (returns 405).
 
 ### PetClinic Services
 
@@ -347,6 +394,25 @@ kubectl rollout restart deployment -n travel-planner
 - Confirm a stream exists covering your tests: `curl -s https://api.thousandeyes.com/v7/stream -H "Authorization: Bearer ${TE_BEARER_TOKEN}"`
 - Look for a stream with `"testMatch": []` (covers all tests) pointing to `ingest.{REALM}.signalfx.com`
 - If no such stream exists, create one — see [How the Streaming Works](#how-the-thousandeyes--splunk-streaming-works) above
+
+### `te.*` span attributes missing on `/health` spans
+
+- The `/health` view function must call `stamp_te_span()` directly. A Flask `after_request` hook does not reliably stamp attributes before the span closes.
+- Verify the TE test has `X-TE-Test-Id` and `X-TE-Test-Name` custom headers (set by `04-create-te-tests.sh`). Re-run the script if tests were created manually or before this fix:
+  ```bash
+  bash scripts/04-create-te-tests.sh
+  ```
+- Verify `distributedTracing: true` on the test:
+  ```bash
+  curl -s https://api.thousandeyes.com/v7/tests/<TEST_ID> \
+    -H "Authorization: Bearer ${TE_BEARER_TOKEN}" \
+    | python3 -c "import json,sys; t=json.load(sys.stdin); print('distributedTracing:', t.get('distributedTracing'))"
+  ```
+- After redeployment, the `te-test-ids` ConfigMap and orchestrator restart are handled automatically by `04-create-te-tests.sh`.
+
+### "View in ThousandEyes" button not appearing in APM span detail
+
+The Global Data Link must be configured in Splunk (one-time). See [Distributed Tracing: APM ↔ ThousandEyes](#distributed-tracing-apm--thousandeyes-bi-directional-drilldowns) above. The button appears when clicking the `te.test.id` property in the span detail panel — not as a floating link.
 
 ### `workshop-secret` already exists error
 The secret is pre-created on some workshop instances. The scripts use `--dry-run=client | kubectl apply` to handle this idempotently.
