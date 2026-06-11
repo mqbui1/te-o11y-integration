@@ -10,7 +10,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from shared.otel_setup import register_te_middleware, setup_otel
+from shared.otel_setup import register_te_middleware, setup_otel, stamp_te_span
 
 setup_otel("synthesizer")
 
@@ -26,6 +26,7 @@ register_te_middleware(app)
 
 @app.route("/health")
 def health():
+    stamp_te_span()
     return jsonify({"status": "ok", "service": "synthesizer"})
 
 
