@@ -84,6 +84,7 @@ def create_llm():
     kwargs = {
         "model": os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
         "api_key": os.environ.get("OPENAI_API_KEY", "none"),
+        "timeout": 10,
     }
     base_url = os.environ.get("OPENAI_BASE_URL")
     if base_url:
