@@ -152,51 +152,75 @@ Enables "View in APM" from ThousandEyes test results.
 
 > Cannot be created via API (returns 405). Requires Account Admin role in ThousandEyes.
 
-## Demo: Simulating an Agent Outage
+## Demo Scenarios
 
-Show how TE and APM together give faster root cause analysis than either alone.
-
-### Run the outage
-
-Scale down one of the specialist agents:
+Three scenarios showing how ThousandEyes and Splunk APM together give instant root cause clarity on AI agent failures. Run any scenario, walk through both tools, then restore.
 
 ```bash
-kubectl scale deployment flight-agent --replicas=0 -n travel-planner
+bash scripts/10-demo-restore.sh   # always safe to run — resets everything
 ```
 
-### What to show in ThousandEyes
+---
 
-**app.thousandeyes.com → Test Settings** → filter `[your-prefix]`
+### Scenario 1: Orchestrator Unreachable
 
-- `[prefix] Agent - Flight Specialist` → availability drops to **0%**
-- Error: connection refused / timeout from `te-agent-your-name`
-- Exact timestamp of failure visible in the availability chart
+**Story:** A user submits a travel plan request. It never arrives. The entry point to the entire AI system is down.
 
-> Tests run every 2 minutes — failure appears within the next cycle.
+```bash
+bash scripts/07-demo-orchestrator-down.sh
+```
 
-### What to show in Splunk APM
+| Tool | What you see |
+|------|-------------|
+| **ThousandEyes** | `[prefix] Agent - Orchestrator` → availability 0%, connection refused. All other tests green. |
+| **Splunk APM** | No new `travel.plan` traces appear. Orchestrator goes dark on the service map. |
 
-**APM → Environments: `${INSTANCE}-workshop`**
+**The insight:** TE detects the entry point is down independently — before any user complaint. APM confirms no traffic is getting through.
 
-- `orchestrator` service map shows error rate on `agent.call.flight-agent` span
-- Click the failing span → `te.test.id` tag → **"View in ThousandEyes"** button
-- Span also shows `te.test.name` and `te.test.url` for direct navigation
+---
 
-### The narrative
+### Scenario 2: Agent-to-Agent Communication Failure
 
-> *"Your AI orchestrator is failing on flight searches. APM shows the `agent.call.flight-agent` span is erroring — and there's a ThousandEyes link right there on the span.*
->
-> *Click it. TE has been running its own independent test of that exact agent from inside the cluster — the same network path your orchestrator uses. It confirms: connection refused. The flight-agent pod is down.*
->
-> *No network issue. No LLM issue. One failed pod. You know in 30 seconds."*
+**Story:** The orchestrator is healthy and accepting requests, but one specialist agent is unreachable. The AI system partially degrades.
+
+```bash
+bash scripts/08-demo-agent-down.sh                    # defaults to flight-agent
+AGENT=hotel-agent bash scripts/08-demo-agent-down.sh  # or any other agent
+```
+
+| Tool | What you see |
+|------|-------------|
+| **ThousandEyes** | `[prefix] Agent - Flight Specialist` → 0% availability. All other agent tests remain green. Proves the failure is isolated to that one path. |
+| **Splunk APM** | `travel.plan` trace completes. `agent.call.flight-agent` span → ERROR. Click `te.test.id` on that span → **"View in ThousandEyes"** button. Other agent spans healthy. |
+
+**The insight:** TE isolates exactly which agent-to-agent path failed. APM links directly to the TE test — one click from a failing span to network-layer evidence.
+
+---
+
+### Scenario 3: Agent-to-LLM Communication Failure
+
+**Story:** All agents are reachable and responding to health checks. But every agent that tries to call the LLM is failing. Is it a network problem?
+
+```bash
+bash scripts/09-demo-llm-unreachable.sh
+```
+
+| Tool | What you see |
+|------|-------------|
+| **ThousandEyes** | `[prefix] LLM - OpenAI API` → **still green**. All 5 agent health tests → still green. |
+| **Splunk APM** | `agent.call.*` spans all succeed. LangChain spans inside each agent → ERROR (connection timeout to LLM). `travel.plan` returns degraded output. |
+
+**The insight:** TE shows the network path to the LLM is healthy — this is NOT a network problem. The failure is application-layer: bad configuration, wrong URL, or auth issue. TE gives you instant triage before you even open the code.
+
+---
 
 ### Restore
 
 ```bash
-kubectl scale deployment flight-agent --replicas=1 -n travel-planner
+bash scripts/10-demo-restore.sh
 ```
 
-ThousandEyes will show recovery within the next test cycle (~2 minutes).
+Restores all agents to 1 replica and resets LLM config to mock mode. ThousandEyes tests return to green within ~2 minutes.
 
 ## Deploying the Travel Planner Standalone
 
@@ -241,8 +265,12 @@ kubectl run -it --rm test --image=curlimages/curl --restart=Never -n travel-plan
 | `scripts/02-deploy-petclinic.sh` | Deploy PetClinic + Java auto-instrumentation |
 | `scripts/03-deploy-te-agent.sh` | Deploy ThousandEyes Enterprise Agent |
 | `scripts/04-create-te-tests.sh` | Create TE tests, inject custom headers, update ConfigMap |
-| `scripts/05-simulate-outage.sh` | Scale down PetClinic vets + visits services |
-| `scripts/06-restore-services.sh` | Restore scaled-down PetClinic services |
+| `scripts/07-demo-orchestrator-down.sh` | Demo 1: scale orchestrator to 0 (entry point unreachable) |
+| `scripts/08-demo-agent-down.sh` | Demo 2: scale one agent to 0 (`AGENT=flight-agent` default) |
+| `scripts/09-demo-llm-unreachable.sh` | Demo 3: switch to openai mode with unreachable LLM URL |
+| `scripts/10-demo-restore.sh` | Restore all travel planner services to normal |
+| `scripts/05-simulate-outage.sh` | PetClinic: scale down vets + visits services |
+| `scripts/06-restore-services.sh` | PetClinic: restore scaled-down services |
 | `teardown.sh` | Remove all deployments |
 
 ## ThousandEyes Token Guide
