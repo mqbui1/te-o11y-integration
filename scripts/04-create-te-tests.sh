@@ -46,6 +46,21 @@ set -e
 TE_API="https://api.thousandeyes.com/v7/tests/http-server"
 AGENT_HOSTNAME="${AGENT_HOSTNAME:-${TEST_PREFIX}}"
 
+# set_test_headers TEST_ID TEST_NAME
+# Updates a test to inject X-TE-Test-Id and X-TE-Test-Name as custom headers
+# so stamp_te_span() in each service can read them and stamp the OTel span.
+set_test_headers() {
+  local test_id="$1"
+  local test_name="$2"
+  [ -z "${test_id}" ] && return
+  curl -s -X PUT "${TE_API}/${test_id}" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer ${TE_BEARER_TOKEN}" \
+    -d "{\"customHeaders\":{\"root\":{\"X-TE-Test-Id\":\"${test_id}\",\"X-TE-Test-Name\":\"${test_name}\"}}}" \
+    > /dev/null
+  echo "    Custom headers set on test ${test_id}: ${test_name}" >&2
+}
+
 # create_or_get_test NAME URL [DISTRIBUTED_TRACING]
 # Creates the test if it doesn't exist, or fetches the ID if it already does.
 # Returns the test ID via stdout; prints status to stderr.
@@ -104,7 +119,19 @@ HOTEL_TEST_ID=$(create_test    "${HOTEL_TEST_NAME}"    "http://hotel-agent.trave
 ACTIVITY_TEST_ID=$(create_test "${ACTIVITY_TEST_NAME}" "http://activity-agent.travel-planner.svc.cluster.local:8080/health" "true")
 SYNTH_TEST_ID=$(create_test    "${SYNTH_TEST_NAME}"    "http://synthesizer.travel-planner.svc.cluster.local:8080/health"    "true")
 # Orchestrator test (for /health monitoring; orchestrator is the root span origin)
-create_test "[${TEST_PREFIX}] Agent - Orchestrator" "http://orchestrator.travel-planner.svc.cluster.local:8080/health" "true" > /dev/null
+ORCH_TEST_NAME="[${TEST_PREFIX}] Agent - Orchestrator"
+ORCH_TEST_ID=$(create_test "${ORCH_TEST_NAME}" "http://orchestrator.travel-planner.svc.cluster.local:8080/health" "true")
+
+# Inject X-TE-Test-Id and X-TE-Test-Name custom headers on all agent health tests.
+# stamp_te_span() in each service reads these headers and stamps te.* attributes
+# onto the OTel span — enabling APM span detail to show the ThousandEyes test name
+# and a clickable "View in ThousandEyes" link (via Splunk Global Data Links).
+echo "==> Injecting custom TE headers on agent health tests..."
+set_test_headers "${FLIGHT_TEST_ID}"   "${FLIGHT_TEST_NAME}"
+set_test_headers "${HOTEL_TEST_ID}"    "${HOTEL_TEST_NAME}"
+set_test_headers "${ACTIVITY_TEST_ID}" "${ACTIVITY_TEST_NAME}"
+set_test_headers "${SYNTH_TEST_ID}"    "${SYNTH_TEST_NAME}"
+set_test_headers "${ORCH_TEST_ID}"     "${ORCH_TEST_NAME}"
 
 # ── Write test IDs back to ConfigMap ──────────────────────────────────────────
 # The orchestrator reads these at startup and stamps each agent call span with

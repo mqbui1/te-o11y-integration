@@ -49,17 +49,22 @@ bash "${SCRIPT_DIR}/01-install-otel-collector.sh"
 echo ""
 
 # ── Step 2: PetClinic ─────────────────────────────────────────
-echo "[ 2/4 ] Deploying PetClinic..."
+echo "[ 2/5 ] Deploying PetClinic..."
 bash "${SCRIPT_DIR}/02-deploy-petclinic.sh"
 echo ""
 
-# ── Step 3: ThousandEyes Agent ────────────────────────────────
-echo "[ 3/4 ] Deploying ThousandEyes Enterprise Agent..."
+# ── Step 3: Travel Planner ────────────────────────────────────
+echo "[ 3/5 ] Deploying Travel Planner AI agents..."
+LLM_PROVIDER="${LLM_PROVIDER:-mock}" bash "${SCRIPT_DIR}/02-deploy-travel-planner.sh"
+echo ""
+
+# ── Step 4: ThousandEyes Agent ────────────────────────────────
+echo "[ 4/5 ] Deploying ThousandEyes Enterprise Agent..."
 bash "${SCRIPT_DIR}/03-deploy-te-agent.sh"
 echo ""
 
-# ── Step 4: ThousandEyes Tests ────────────────────────────────
-echo "[ 4/4 ] Creating ThousandEyes tests..."
+# ── Step 5: ThousandEyes Tests ────────────────────────────────
+echo "[ 5/5 ] Creating ThousandEyes tests..."
 echo ""
 echo "  To find your TE_AGENT_ID, run:"
 echo "    curl -s https://api.thousandeyes.com/v7/agents \\"
@@ -97,6 +102,10 @@ echo "============================================================"
 echo "  Deployment complete!"
 echo "============================================================"
 echo "  PetClinic app:      http://${EC2_PUBLIC_IP}:81"
+echo "  Travel Planner:     kubectl run -it --rm test --image=curlimages/curl --restart=Never -n travel-planner -- \\"
+echo "                        curl -X POST http://orchestrator.travel-planner.svc.cluster.local:8080/plan \\"
+echo "                          -H 'Content-Type: application/json' \\"
+echo "                          -d '{\"origin\": \"Seattle\", \"destination\": \"Paris\"}'"
 echo "  Splunk APM:         https://app.${REALM}.signalfx.com"
 echo "    -> Environment:   ${INSTANCE}-workshop"
 echo "  ThousandEyes:       https://app.thousandeyes.com"
