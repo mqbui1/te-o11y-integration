@@ -73,3 +73,29 @@ def setup_otel(service_name: str) -> None:
     # Instrumentations — LangChain spans + outbound HTTP context propagation
     LangchainInstrumentor().instrument()
     RequestsInstrumentor().instrument()
+
+
+def register_te_middleware(app) -> None:
+    """
+    Register a Flask before_request hook that reads ThousandEyes custom headers
+    (X-TE-Test-Id, X-TE-Test-Name) injected by TE HTTP tests and stamps them
+    onto the current span. This makes /health spans (and any TE-hit endpoint)
+    show te.test.* correlation tags in Splunk APM just like the orchestrator's
+    agent.call.* spans do.
+
+    TE tests must be configured to send these headers — see 04-create-te-tests.sh.
+    """
+    from flask import request as flask_request
+
+    @app.before_request
+    def _stamp_te_headers():
+        te_test_id = flask_request.headers.get("X-TE-Test-Id", "")
+        te_test_name = flask_request.headers.get("X-TE-Test-Name", "")
+        if te_test_id or te_test_name:
+            span = trace.get_current_span()
+            if te_test_id:
+                span.set_attribute("te.test.id", te_test_id)
+                span.set_attribute("te.test.url",
+                    f"https://app.thousandeyes.com/view/tests/?testId={te_test_id}")
+            if te_test_name:
+                span.set_attribute("te.test.name", te_test_name)

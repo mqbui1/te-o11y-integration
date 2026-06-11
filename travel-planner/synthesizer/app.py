@@ -10,7 +10,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from shared.otel_setup import setup_otel
+from shared.otel_setup import register_te_middleware, setup_otel
 
 setup_otel("synthesizer")
 
@@ -21,6 +21,7 @@ from shared.tools import create_llm
 
 app = Flask(__name__)
 FlaskInstrumentor().instrument_app(app)
+register_te_middleware(app)
 
 
 @app.route("/health")

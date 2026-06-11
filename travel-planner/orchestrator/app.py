@@ -26,7 +26,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from shared.otel_setup import setup_otel
+from shared.otel_setup import register_te_middleware, setup_otel
 
 setup_otel("orchestrator")
 
@@ -40,6 +40,7 @@ from opentelemetry.trace import SpanKind, StatusCode
 
 app = Flask(__name__)
 FlaskInstrumentor().instrument_app(app)
+register_te_middleware(app)
 
 # Service URLs — use K8s ClusterIP DNS names, overridable via env
 FLIGHT_AGENT_URL   = os.environ.get("FLIGHT_AGENT_URL",   "http://flight-agent.travel-planner.svc.cluster.local:8080")
@@ -84,7 +85,7 @@ def _call_agent(agent_key: str, url: str, payload: dict, timeout: int = 30):
         if te_test_id:
             span.set_attribute("te.test.id", te_test_id)
             span.set_attribute("te.test.url",
-                f"https://app.thousandeyes.com/view/tests/{te_test_id}")
+                f"https://app.thousandeyes.com/view/tests/?testId={te_test_id}")
         if TE_AGENT_NAME:
             span.set_attribute("te.agent.name", TE_AGENT_NAME)
 
