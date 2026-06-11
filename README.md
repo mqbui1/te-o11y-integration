@@ -173,6 +173,10 @@ ThousandEyes tests (from te-demo namespace, same network vantage as agents):
 OTel trace context propagated via W3C headers → full distributed trace in Splunk APM
 ```
 
+### Design Notes
+
+- **No k8s liveness/readiness probes** — intentionally removed from all 5 travel-planner deployments. Probes generate constant `kube-probe/1.33` spans in Splunk APM that bury the ThousandEyes-originated `/health` spans. ThousandEyes tests every 2 minutes serve the same availability monitoring purpose for this demo.
+
 ### Deploying the Travel Planner
 
 ```bash
@@ -397,18 +401,22 @@ kubectl rollout restart deployment -n travel-planner
 
 ### `te.*` span attributes missing on `/health` spans
 
-- The `/health` view function must call `stamp_te_span()` directly. A Flask `after_request` hook does not reliably stamp attributes before the span closes.
-- Verify the TE test has `X-TE-Test-Id` and `X-TE-Test-Name` custom headers (set by `04-create-te-tests.sh`). Re-run the script if tests were created manually or before this fix:
+- The `/health` view function must call `stamp_te_span()` directly — a Flask `after_request` hook does not reliably stamp attributes before the span closes.
+- Verify the TE test has `X-TE-Test-Id` and `X-TE-Test-Name` custom headers and `distributedTracing: true`. Re-run `04-create-te-tests.sh` if tests were created before this was in place:
   ```bash
   bash scripts/04-create-te-tests.sh
   ```
-- Verify `distributedTracing: true` on the test:
+- **Important:** A partial PUT to the TE API silently resets `distributedTracing` to `false`. The script uses a full GET→merge→PUT cycle to preserve all fields. Verify both are set:
   ```bash
-  curl -s https://api.thousandeyes.com/v7/tests/<TEST_ID> \
+  curl -s https://api.thousandeyes.com/v7/tests/http-server/<TEST_ID> \
     -H "Authorization: Bearer ${TE_BEARER_TOKEN}" \
-    | python3 -c "import json,sys; t=json.load(sys.stdin); print('distributedTracing:', t.get('distributedTracing'))"
+    | python3 -c "import json,sys; t=json.load(sys.stdin); print('distributedTracing:', t.get('distributedTracing')); print('customHeaders:', t.get('customHeaders'))"
   ```
 - After redeployment, the `te-test-ids` ConfigMap and orchestrator restart are handled automatically by `04-create-te-tests.sh`.
+
+### `/health` spans flooded with `kube-probe/1.33` requests hiding TE spans
+
+K8s liveness/readiness probes are intentionally **disabled** on all travel-planner deployments. If you re-enable them or deploy from scratch with probes, TE-originated spans will be buried by probe traffic. The manifests in `manifests/travel-planner/` have no `livenessProbe` or `readinessProbe` sections by design.
 
 ### "View in ThousandEyes" button not appearing in APM span detail
 
