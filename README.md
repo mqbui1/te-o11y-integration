@@ -83,7 +83,7 @@ chmod +x deploy.sh scripts/*.sh
 ./deploy.sh
 ```
 
-Deployment order: Splunk OTel Collector → PetClinic → Travel Planner → ThousandEyes Agent → ThousandEyes Tests. Total time: ~8–12 minutes.
+Deployment order: Splunk OTel Collector → Travel Planner → ThousandEyes Agent → ThousandEyes Tests. Total time: ~8–12 minutes.
 
 After deployment, two **one-time manual steps** are required for bi-directional drilldowns (see [Bi-directional Drilldowns Setup](#bi-directional-drilldowns-setup)):
 - **Splunk**: Create a Global Data Link for `te.test.id`
@@ -95,7 +95,6 @@ After deployment, two **one-time manual steps** are required for bi-directional 
 |-----------|-----------|---------|
 | Splunk OTel Collector | `default` | Helm chart, DaemonSet agent + cluster receiver + operator |
 | Travel Planner | `travel-planner` | 5 Python Flask AI agents + CronJob load generator |
-| PetClinic | `default` | 7 Java microservices (supplementary demo app) |
 | ThousandEyes Enterprise Agent | `te-demo` | Co-located in cluster for accurate network measurements |
 | ThousandEyes Tests | — | 5 agent health tests + 1 LLM + 4 external |
 
@@ -253,7 +252,6 @@ kubectl run -it --rm test --image=curlimages/curl --restart=Never -n travel-plan
 | Travel planner logs | `kubectl logs -n travel-planner deployment/orchestrator -f` |
 | OTel Collector logs | `kubectl logs -l app=splunk-otel-collector -f --container otel-collector` |
 | TE Agent logs | `kubectl logs -n te-demo -l app=thousandeyes -f` |
-| PetClinic app | `http://<EC2_PUBLIC_IP>:81` |
 
 ## Scripts
 
@@ -262,15 +260,12 @@ kubectl run -it --rm test --image=curlimages/curl --restart=Never -n travel-plan
 | `deploy.sh` | Full end-to-end deployment |
 | `scripts/01-install-otel-collector.sh` | Install Splunk OTel Collector via Helm |
 | `scripts/02-deploy-travel-planner.sh` | Build + deploy all 5 travel planner agents |
-| `scripts/02-deploy-petclinic.sh` | Deploy PetClinic + Java auto-instrumentation |
 | `scripts/03-deploy-te-agent.sh` | Deploy ThousandEyes Enterprise Agent |
 | `scripts/04-create-te-tests.sh` | Create TE tests, inject custom headers, update ConfigMap |
 | `scripts/07-demo-orchestrator-down.sh` | Demo 1: scale orchestrator to 0 (entry point unreachable) |
 | `scripts/08-demo-agent-down.sh` | Demo 2: scale one agent to 0 (`AGENT=flight-agent` default) |
 | `scripts/09-demo-llm-unreachable.sh` | Demo 3: switch to openai mode with unreachable LLM URL |
 | `scripts/10-demo-restore.sh` | Restore all travel planner services to normal |
-| `scripts/05-simulate-outage.sh` | PetClinic: scale down vets + visits services |
-| `scripts/06-restore-services.sh` | PetClinic: restore scaled-down services |
 | `teardown.sh` | Remove all deployments |
 
 ## ThousandEyes Token Guide
@@ -359,17 +354,6 @@ curl -XPOST https://api.thousandeyes.com/v7/stream \
 ```
 
 A stream with `"testMatch": []` covers all tests automatically — no updates needed when new tests are added.
-
-## Supplementary: PetClinic
-
-PetClinic (7 Java microservices) is included as a secondary demo showing Java auto-instrumentation via the OTel operator. It also has ThousandEyes tests for each service endpoint.
-
-To simulate a PetClinic outage:
-
-```bash
-bash scripts/05-simulate-outage.sh   # scales down vets + visits services
-bash scripts/06-restore-services.sh  # restores them
-```
 
 ## Teardown
 
