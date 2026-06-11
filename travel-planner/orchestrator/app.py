@@ -26,7 +26,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from shared.otel_setup import register_te_middleware, setup_otel
+from shared.otel_setup import register_te_middleware, setup_otel, stamp_te_span
 
 setup_otel("orchestrator")
 
@@ -105,6 +105,7 @@ def _call_agent(agent_key: str, url: str, payload: dict, timeout: int = 30):
 
 @app.route("/health")
 def health():
+    stamp_te_span()
     return jsonify({"status": "ok", "service": "orchestrator"})
 
 
