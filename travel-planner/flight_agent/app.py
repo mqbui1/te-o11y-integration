@@ -19,7 +19,7 @@ from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from shared.tools import create_llm, search_flights
 
 app = Flask(__name__)
-FlaskInstrumentor().instrument_app(app, excluded_urls="/health")
+FlaskInstrumentor().instrument_app(app)
 
 
 @app.route("/health")
