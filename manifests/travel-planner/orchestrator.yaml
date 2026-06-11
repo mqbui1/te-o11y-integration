@@ -54,6 +54,63 @@ spec:
               value: "http://activity-agent.travel-planner.svc.cluster.local:8080"
             - name: SYNTHESIZER_URL
               value: "http://synthesizer.travel-planner.svc.cluster.local:8080"
+            # ThousandEyes test correlation — populated by 04-create-te-tests.sh
+            # Injects TE test name/ID into APM spans so a failing span links
+            # directly to the TE test monitoring that same network path.
+            - name: TE_AGENT_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: te-test-ids
+                  key: TE_AGENT_NAME
+                  optional: true
+            - name: TE_TEST_NAME_FLIGHT
+              valueFrom:
+                configMapKeyRef:
+                  name: te-test-ids
+                  key: TE_TEST_NAME_FLIGHT
+                  optional: true
+            - name: TE_TEST_ID_FLIGHT
+              valueFrom:
+                configMapKeyRef:
+                  name: te-test-ids
+                  key: TE_TEST_ID_FLIGHT
+                  optional: true
+            - name: TE_TEST_NAME_HOTEL
+              valueFrom:
+                configMapKeyRef:
+                  name: te-test-ids
+                  key: TE_TEST_NAME_HOTEL
+                  optional: true
+            - name: TE_TEST_ID_HOTEL
+              valueFrom:
+                configMapKeyRef:
+                  name: te-test-ids
+                  key: TE_TEST_ID_HOTEL
+                  optional: true
+            - name: TE_TEST_NAME_ACTIVITY
+              valueFrom:
+                configMapKeyRef:
+                  name: te-test-ids
+                  key: TE_TEST_NAME_ACTIVITY
+                  optional: true
+            - name: TE_TEST_ID_ACTIVITY
+              valueFrom:
+                configMapKeyRef:
+                  name: te-test-ids
+                  key: TE_TEST_ID_ACTIVITY
+                  optional: true
+            - name: TE_TEST_NAME_SYNTH
+              valueFrom:
+                configMapKeyRef:
+                  name: te-test-ids
+                  key: TE_TEST_NAME_SYNTH
+                  optional: true
+            - name: TE_TEST_ID_SYNTH
+              valueFrom:
+                configMapKeyRef:
+                  name: te-test-ids
+                  key: TE_TEST_ID_SYNTH
+                  optional: true
           resources:
             requests:
               memory: "256Mi"

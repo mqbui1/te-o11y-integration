@@ -53,6 +53,9 @@ kubectl create secret generic workshop-secret \
   --from-literal=env="${INSTANCE:-travel-planner-demo}-workshop" \
   --dry-run=client -o yaml | kubectl apply -f -
 
+echo "==> Deploying te-test-ids ConfigMap (placeholder; populated by 04-create-te-tests.sh)..."
+kubectl apply -f "${REPO_DIR}/manifests/travel-planner/te-test-ids.yaml"
+
 echo "==> Deploying travel-planner services..."
 for manifest in orchestrator flight-agent hotel-agent activity-agent synthesizer; do
   kubectl apply -f "${REPO_DIR}/manifests/travel-planner/${manifest}.yaml"
