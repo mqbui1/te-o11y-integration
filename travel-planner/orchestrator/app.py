@@ -39,7 +39,7 @@ from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.trace import SpanKind, StatusCode
 
 app = Flask(__name__)
-FlaskInstrumentor().instrument_app(app, excluded_urls="/health")
+FlaskInstrumentor().instrument_app(app)
 
 # Service URLs — use K8s ClusterIP DNS names, overridable via env
 FLIGHT_AGENT_URL   = os.environ.get("FLIGHT_AGENT_URL",   "http://flight-agent.travel-planner.svc.cluster.local:8080")
