@@ -5,6 +5,7 @@ opentelemetry-exporter-otlp-proto-grpc==1.34.1
 opentelemetry-instrumentation-flask==0.55b1
 opentelemetry-instrumentation-requests==0.55b1
 opentelemetry-instrumentation-langchain==0.40.11
+opentelemetry-propagator-b3==1.34.1
 langchain==0.3.25
 langchain-openai==0.3.16
 langchain-aws==0.2.24

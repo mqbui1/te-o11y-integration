@@ -1,0 +1,18 @@
+---
+# ConfigMap populated by scripts/04-create-te-tests.sh after tests are created.
+# Injected into the orchestrator deployment so APM spans link back to TE tests.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: te-test-ids
+  namespace: travel-planner
+data:
+  TE_AGENT_NAME: ""
+  TE_TEST_NAME_FLIGHT: ""
+  TE_TEST_ID_FLIGHT: ""
+  TE_TEST_NAME_HOTEL: ""
+  TE_TEST_ID_HOTEL: ""
+  TE_TEST_NAME_ACTIVITY: ""
+  TE_TEST_ID_ACTIVITY: ""
+  TE_TEST_NAME_SYNTH: ""
+  TE_TEST_ID_SYNTH: ""

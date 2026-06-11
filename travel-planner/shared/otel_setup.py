@@ -1,12 +1,15 @@
 """Shared OpenTelemetry setup for all travel-planner services."""
 import os
 
-from opentelemetry import _events, _logs, metrics, trace
+from opentelemetry import _events, _logs, metrics, propagate, trace
+from opentelemetry.baggage.propagation import W3CBaggagePropagator
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.langchain import LangchainInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.propagators.b3 import B3Format
+from opentelemetry.propagators.composite import CompositePropagator
 from opentelemetry.sdk._events import EventLoggerProvider
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
@@ -15,6 +18,8 @@ from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.sampling import ALWAYS_ON, ParentBased
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 
 def setup_otel(service_name: str) -> None:
@@ -23,7 +28,22 @@ def setup_otel(service_name: str) -> None:
 
     Reads OTEL_EXPORTER_OTLP_ENDPOINT from the environment (set via the
     Splunk OTel Collector DaemonSet hostIP pattern in K8s manifests).
+
+    Propagators are set in the order required for ThousandEyes distributed
+    tracing: baggage → b3 → tracecontext. This ensures TE-injected B3 headers
+    are extracted correctly so TE-initiated requests appear as root spans in
+    Splunk APM with bi-directional drilldown support.
+
+    ParentBased(ALWAYS_ON) sampler ensures traces started by ThousandEyes
+    synthetic tests are always sampled and appear in Splunk APM.
     """
+    # Propagators: baggage → b3 → tracecontext (order matters for TE integration)
+    propagate.set_global_textmap(CompositePropagator([
+        W3CBaggagePropagator(),
+        B3Format(),
+        TraceContextTextMapPropagator(),
+    ]))
+
     resource = Resource.create(
         {
             SERVICE_NAME: os.environ.get("OTEL_SERVICE_NAME", service_name),
@@ -33,8 +53,8 @@ def setup_otel(service_name: str) -> None:
         }
     )
 
-    # Traces
-    tracer_provider = TracerProvider(resource=resource)
+    # ParentBased(ALWAYS_ON): continues sampling when TE starts the trace
+    tracer_provider = TracerProvider(resource=resource, sampler=ParentBased(ALWAYS_ON))
     tracer_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
     trace.set_tracer_provider(tracer_provider)
 
