@@ -46,8 +46,9 @@ set -e
 TE_API="https://api.thousandeyes.com/v7/tests/http-server"
 AGENT_HOSTNAME="${AGENT_HOSTNAME:-${TEST_PREFIX}}"
 
-# create_test NAME URL [DISTRIBUTED_TRACING]
-# Returns the created test ID via stdout; prints status to stderr.
+# create_or_get_test NAME URL [DISTRIBUTED_TRACING]
+# Creates the test if it doesn't exist, or fetches the ID if it already does.
+# Returns the test ID via stdout; prints status to stderr.
 create_test() {
   local name="$1"
   local url="$2"
@@ -62,7 +63,22 @@ create_test() {
     -d "${body}")
   local id
   id=$(echo "${result}" | python3 -c "import json,sys; print(json.load(sys.stdin).get('testId',''))" 2>/dev/null)
-  echo "    Created test ID ${id:-ERROR}: ${name}" >&2
+
+  # If creation failed (test already exists), look up the existing test ID
+  if [ -z "${id}" ]; then
+    id=$(curl -s "https://api.thousandeyes.com/v7/tests" \
+      -H "Authorization: Bearer ${TE_BEARER_TOKEN}" \
+      | _TE_TEST_NAME="${name}" python3 -c "
+import json, sys, os
+name = os.environ.get('_TE_TEST_NAME', '')
+tests = json.load(sys.stdin).get('tests', [])
+match = next((t for t in tests if t.get('testName') == name), None)
+print(match['testId'] if match else '')
+" 2>/dev/null)
+    echo "    Existing test ID ${id:-ERROR}: ${name}" >&2
+  else
+    echo "    Created test ID ${id}: ${name}" >&2
+  fi
   echo "${id}"
 }
 
