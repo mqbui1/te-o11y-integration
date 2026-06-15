@@ -19,7 +19,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 LLM_PROVIDER="${LLM_PROVIDER:-mock}"
-K3D_CLUSTER="${K3D_CLUSTER:-k3s-default}"
+K3D_CLUSTER="${K3D_CLUSTER:-${CLUSTER_NAME:-k3s-default}}"
 
 echo "==> Building travel-planner Docker image..."
 docker build -t travel-planner:latest "${REPO_DIR}/travel-planner"
