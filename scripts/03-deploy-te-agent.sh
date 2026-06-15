@@ -40,26 +40,35 @@ set -e
 # ── Auto-fetch Account Group Token if not explicitly provided ─────────────────
 if [ -z "${TE_ACCOUNT_TOKEN}" ]; then
   echo "==> TE_ACCOUNT_TOKEN not set — fetching from API using TE_BEARER_TOKEN..."
-  TE_ACCOUNT_TOKEN=$(curl -s https://api.thousandeyes.com/v7/account-groups \
+  # The list endpoint omits accountToken; must fetch the specific account group by AID.
+  TE_AG_AID=$(curl -s https://api.thousandeyes.com/v7/account-groups \
     -H "Authorization: Bearer ${TE_BEARER_TOKEN}" \
     | python3 -c "
 import json, sys
 ags = json.load(sys.stdin).get('accountGroups', [])
-# Prefer the current/default account group
 current = [ag for ag in ags if ag.get('isCurrentAccountGroup')]
 ag = current[0] if current else (ags[0] if ags else None)
-if ag:
-    token = ag.get('accountToken', '')
-    if token:
-        print(token)
-        import sys; sys.stderr.write('  Account Group: ' + ag['accountGroupName'] + '\n')
-    else:
-        sys.stderr.write('ERROR: accountToken not in response\n')
-        sys.exit(1)
+print(ag['aid'] if ag else '')
+" 2>/dev/null)
+
+  if [ -z "${TE_AG_AID}" ]; then
+    echo "ERROR: Could not fetch account group AID."
+    exit 1
+  fi
+
+  TE_ACCOUNT_TOKEN=$(curl -s "https://api.thousandeyes.com/v7/account-groups/${TE_AG_AID}" \
+    -H "Authorization: Bearer ${TE_BEARER_TOKEN}" \
+    | python3 -c "
+import json, sys
+ag = json.load(sys.stdin)
+token = ag.get('accountToken', '')
+if token:
+    sys.stderr.write('  Account Group: ' + ag.get('accountGroupName','') + '\n')
+    print(token)
 else:
-    sys.stderr.write('ERROR: no account groups found\n')
+    sys.stderr.write('ERROR: accountToken not in response\n')
     sys.exit(1)
-" 2>&1 | tee /dev/stderr | grep -v "Account Group\|ERROR")
+" 2>&1 | grep -v "Account Group\|ERROR")
 
   if [ -z "${TE_ACCOUNT_TOKEN}" ]; then
     echo "ERROR: Could not auto-fetch Account Group Token."

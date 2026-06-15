@@ -25,20 +25,23 @@ SCRIPT_DIR="$(cd "$(dirname "$0")/scripts" && pwd)"
 # Auto-fetch TE_ACCOUNT_TOKEN if not provided (03-deploy-te-agent.sh will also attempt this)
 if [ -z "${TE_ACCOUNT_TOKEN}" ]; then
   echo "==> TE_ACCOUNT_TOKEN not set — fetching from API using TE_BEARER_TOKEN..."
-  TE_ACCOUNT_TOKEN=$(curl -s https://api.thousandeyes.com/v7/account-groups \
+  TE_AG_AID=$(curl -s https://api.thousandeyes.com/v7/account-groups \
     -H "Authorization: Bearer ${TE_BEARER_TOKEN}" \
     | python3 -c "
 import json, sys
 ags = json.load(sys.stdin).get('accountGroups', [])
 current = [ag for ag in ags if ag.get('isCurrentAccountGroup')]
 ag = current[0] if current else (ags[0] if ags else None)
-if ag:
-    token = ag.get('accountToken', '')
-    if token:
-        print(token)
-    else:
-        sys.stderr.write('WARNING: accountToken not in response — will retry in 03-deploy-te-agent.sh\n')
+print(ag['aid'] if ag else '')
 " 2>/dev/null)
+  if [ -n "${TE_AG_AID}" ]; then
+    TE_ACCOUNT_TOKEN=$(curl -s "https://api.thousandeyes.com/v7/account-groups/${TE_AG_AID}" \
+      -H "Authorization: Bearer ${TE_BEARER_TOKEN}" \
+      | python3 -c "
+import json, sys
+print(json.load(sys.stdin).get('accountToken', ''))
+" 2>/dev/null)
+  fi
   [ -n "${TE_ACCOUNT_TOKEN}" ] && echo "==> TE_ACCOUNT_TOKEN fetched." || echo "==> TE_ACCOUNT_TOKEN will be fetched by deploy-te-agent step."
   export TE_ACCOUNT_TOKEN
 fi
