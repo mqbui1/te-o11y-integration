@@ -67,27 +67,22 @@ echo "============================================================"
 echo ""
 
 # ── Step 1: Splunk OTel Collector ─────────────────────────────
-echo "[ 1/4 ] Installing Splunk OTel Collector..."
+echo "[ 1/5 ] Installing Splunk OTel Collector..."
 bash "${SCRIPT_DIR}/01-install-otel-collector.sh"
 echo ""
 
-# ── Step 2: PetClinic ─────────────────────────────────────────
-echo "[ 2/5 ] Deploying PetClinic..."
-bash "${SCRIPT_DIR}/02-deploy-petclinic.sh"
-echo ""
-
-# ── Step 3: Travel Planner ────────────────────────────────────
-echo "[ 3/5 ] Deploying Travel Planner AI agents..."
+# ── Step 2: Travel Planner ────────────────────────────────────
+echo "[ 2/5 ] Deploying Travel Planner AI agents..."
 LLM_PROVIDER="${LLM_PROVIDER:-mock}" bash "${SCRIPT_DIR}/02-deploy-travel-planner.sh"
 echo ""
 
-# ── Step 4: ThousandEyes Agent ────────────────────────────────
-echo "[ 4/5 ] Deploying ThousandEyes Enterprise Agent..."
+# ── Step 3: ThousandEyes Agent ────────────────────────────────
+echo "[ 3/5 ] Deploying ThousandEyes Enterprise Agent..."
 bash "${SCRIPT_DIR}/03-deploy-te-agent.sh"
 echo ""
 
-# ── Step 5: ThousandEyes Tests ────────────────────────────────
-echo "[ 5/5 ] Creating ThousandEyes tests..."
+# ── Step 4: ThousandEyes Tests ────────────────────────────────
+echo "[ 4/5 ] Creating ThousandEyes tests..."
 echo ""
 echo "  To find your TE_AGENT_ID, run:"
 echo "    curl -s https://api.thousandeyes.com/v7/agents \\"
@@ -120,11 +115,15 @@ else
   bash "${SCRIPT_DIR}/04-create-te-tests.sh"
 fi
 
+# ── Step 5: Splunk Detectors ──────────────────────────────────
+echo ""
+echo "[ 5/5 ] Creating Splunk Observability detectors..."
+bash "${SCRIPT_DIR}/05-create-splunk-detectors.sh"
+
 echo ""
 echo "============================================================"
 echo "  Deployment complete!"
 echo "============================================================"
-echo "  PetClinic app:      http://${EC2_PUBLIC_IP}:81"
 echo "  Travel Planner:     kubectl run -it --rm test --image=curlimages/curl --restart=Never -n travel-planner -- \\"
 echo "                        curl -X POST http://orchestrator.travel-planner.svc.cluster.local:8080/plan \\"
 echo "                          -H 'Content-Type: application/json' \\"
@@ -134,6 +133,8 @@ echo "    -> Environment:   ${INSTANCE}-workshop"
 echo "  ThousandEyes:       https://app.thousandeyes.com"
 echo "    -> Filter tests:  [${TEST_PREFIX}]"
 echo ""
-echo "  Simulate outage:    bash scripts/05-simulate-outage.sh"
-echo "  Restore services:   bash scripts/06-restore-services.sh"
+echo "  Demo scenarios:     bash scripts/07-demo-orchestrator-down.sh"
+echo "                      bash scripts/08-demo-agent-down.sh"
+echo "                      bash scripts/09-demo-llm-unreachable.sh"
+echo "  Restore:            bash scripts/10-demo-restore.sh"
 echo "============================================================"

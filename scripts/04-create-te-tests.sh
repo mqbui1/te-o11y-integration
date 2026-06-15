@@ -114,12 +114,6 @@ print(match['testId'] if match else '')
   echo "${id}"
 }
 
-echo "==> Creating in-cluster PetClinic tests..."
-create_test "[${TEST_PREFIX}] PetClinic Frontend"     "http://api-gateway.default.svc.cluster.local:8080"     "true" > /dev/null
-create_test "[${TEST_PREFIX}] PetClinic Owners API"   "http://customers-service.default.svc.cluster.local:8080/owners" "true" > /dev/null
-create_test "[${TEST_PREFIX}] PetClinic Vets API"     "http://vets-service.default.svc.cluster.local:8080/vets"     "true" > /dev/null
-create_test "[${TEST_PREFIX}] PetClinic Visits API"   "http://visits-service.default.svc.cluster.local:8080/visits"  "true" > /dev/null
-
 # ── Travel Planner agent health tests (distributed tracing enabled) ────────────
 # distributedTracing=true: ThousandEyes injects B3 trace headers into each
 # request. The app extracts them (B3 propagator configured in otel_setup.py)
@@ -153,10 +147,27 @@ set_test_headers "${ORCH_TEST_ID}"     "${ORCH_TEST_NAME}"
 # ── Write test IDs back to ConfigMap ──────────────────────────────────────────
 # The orchestrator reads these at startup and stamps each agent call span with
 # te.test.name, te.test.id, te.test.url — visible in Splunk APM span detail.
+# ── Create LLM test before ConfigMap update so its ID can be stored ───────────
+# Tests status.openai.com (returns 200) rather than api.openai.com (returns 421).
+# This validates the cluster has a healthy network path to the LLM provider.
+echo "==> Creating agent-to-LLM connectivity test..."
+LLM_PROVIDER="${LLM_PROVIDER:-openai}"
+LLM_TEST_NAME="[${TEST_PREFIX}] LLM - OpenAI Status"
+if [ "${LLM_PROVIDER}" = "bedrock" ]; then
+  AWS_REGION="${AWS_DEFAULT_REGION:-us-east-1}"
+  LLM_TEST_NAME="[${TEST_PREFIX}] LLM - AWS Bedrock (${AWS_REGION})"
+  LLM_TEST_ID=$(create_test "${LLM_TEST_NAME}" \
+    "https://bedrock-runtime.${AWS_REGION}.amazonaws.com" "false")
+else
+  LLM_TEST_ID=$(create_test "${LLM_TEST_NAME}" "https://status.openai.com" "false")
+fi
+
 echo "==> Updating te-test-ids ConfigMap in travel-planner namespace..."
 kubectl create configmap te-test-ids \
   --namespace travel-planner \
   --from-literal=TE_AGENT_NAME="te-agent-${AGENT_HOSTNAME}" \
+  --from-literal=TE_TEST_NAME_ORCH="${ORCH_TEST_NAME}" \
+  --from-literal=TE_TEST_ID_ORCH="${ORCH_TEST_ID}" \
   --from-literal=TE_TEST_NAME_FLIGHT="${FLIGHT_TEST_NAME}" \
   --from-literal=TE_TEST_ID_FLIGHT="${FLIGHT_TEST_ID}" \
   --from-literal=TE_TEST_NAME_HOTEL="${HOTEL_TEST_NAME}" \
@@ -165,24 +176,13 @@ kubectl create configmap te-test-ids \
   --from-literal=TE_TEST_ID_ACTIVITY="${ACTIVITY_TEST_ID}" \
   --from-literal=TE_TEST_NAME_SYNTH="${SYNTH_TEST_NAME}" \
   --from-literal=TE_TEST_ID_SYNTH="${SYNTH_TEST_ID}" \
+  --from-literal=TE_TEST_NAME_LLM="${LLM_TEST_NAME}" \
+  --from-literal=TE_TEST_ID_LLM="${LLM_TEST_ID}" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 echo "==> Restarting orchestrator to pick up new test IDs..."
 kubectl rollout restart deployment/orchestrator -n travel-planner
 kubectl rollout status deployment/orchestrator -n travel-planner --timeout=120s
-
-# Agent-to-LLM connectivity: TE tests the LLM provider endpoint from inside the
-# cluster — the same network path the agents use. If TE sees high latency here,
-# slow LLM responses in APM traces have a network-layer explanation.
-echo "==> Creating agent-to-LLM connectivity tests..."
-LLM_PROVIDER="${LLM_PROVIDER:-openai}"
-if [ "${LLM_PROVIDER}" = "bedrock" ]; then
-  AWS_REGION="${AWS_DEFAULT_REGION:-us-east-1}"
-  create_test "[${TEST_PREFIX}] LLM - AWS Bedrock (${AWS_REGION})" \
-    "https://bedrock-runtime.${AWS_REGION}.amazonaws.com" "false" > /dev/null
-else
-  create_test "[${TEST_PREFIX}] LLM - OpenAI API" "https://api.openai.com" "false" > /dev/null
-fi
 
 echo "==> Creating external tests..."
 create_test "[${TEST_PREFIX}] EC2 Instance Health"          "http://${EC2_PUBLIC_IP}"              "false" > /dev/null
