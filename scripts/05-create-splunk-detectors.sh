@@ -259,10 +259,10 @@ Symptom:    HTTP 500. Span duration ~31s. Exception: openai.APITimeoutError
 ━━━ Detection Logic ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 errors = data('http.server.duration_count', filter=filter('service.name', 'flight-agent', 'hotel-agent', 'activity-agent', 'synthesizer') and filter('deployment.environment', '{ENV}') and filter('http.status_code', '500', '502', '503'), rollup='sum', extrapolation='zero', maxExtrapolations=5).sum().sum(over='2m')
-detect(when(errors > 0), off=when(errors == 0, lasting='3m')).publish('llm_errors')"""
+detect(when(errors > 0), off=when(errors == 0, lasting='1m')).publish('llm_errors')"""
 
 prog3 = f"""errors = data('http.server.duration_count', filter=filter('service.name', 'flight-agent', 'hotel-agent', 'activity-agent', 'synthesizer') and filter('deployment.environment', '{ENV}') and filter('http.status_code', '500', '502', '503'), rollup='sum', extrapolation='zero', maxExtrapolations=5).sum().sum(over='2m')
-detect(when(errors > 0), off=when(errors == 0, lasting='3m')).publish('llm_errors')"""
+detect(when(errors > 0), off=when(errors == 0, lasting='1m')).publish('llm_errors')"""
 
 print("==> Scenario 3: Agent LLM Calls Failing")
 upsert({
