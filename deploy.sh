@@ -118,7 +118,12 @@ fi
 # ── Step 5: Splunk Detectors ──────────────────────────────────
 echo ""
 echo "[ 5/5 ] Creating Splunk Observability detectors..."
-bash "${SCRIPT_DIR}/05-create-splunk-detectors.sh"
+if [ -z "${SPLUNK_API_TOKEN:-}" ] && [ -z "${ACCESS_TOKEN:-}" ]; then
+  echo "  Skipping: set SPLUNK_API_TOKEN (API-scoped) to create detectors automatically."
+  echo "  Re-run manually:  SPLUNK_API_TOKEN=<token> bash scripts/05-create-splunk-detectors.sh"
+else
+  bash "${SCRIPT_DIR}/05-create-splunk-detectors.sh"
+fi
 
 echo ""
 echo "============================================================"

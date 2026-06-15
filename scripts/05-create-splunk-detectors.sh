@@ -11,10 +11,17 @@
 # updated in-place (PUT), not duplicated.
 #
 # Required env vars (pre-set on workshop EC2 instances):
-#   ACCESS_TOKEN  - Splunk Observability ingest/API token
 #   REALM         - Splunk realm (e.g. us1)
 #   INSTANCE      - Workshop instance name (e.g. o11yte-ea0a)
 #                   Detectors filter on environment: ${INSTANCE}-workshop
+#
+# Token (one of the following, in priority order):
+#   SPLUNK_API_TOKEN  - API-scoped token (can create/update detectors)
+#   ACCESS_TOKEN      - Falls back to this if SPLUNK_API_TOKEN is not set.
+#                       Note: workshop EC2 ACCESS_TOKEN is ingest-only and
+#                       will return 401. Set SPLUNK_API_TOKEN explicitly:
+#                         export SPLUNK_API_TOKEN="<api-scope-token>"
+#                         bash scripts/05-create-splunk-detectors.sh
 #
 # TE test IDs are read from the te-test-ids ConfigMap (populated by
 # 04-create-te-tests.sh). The script falls back to empty strings if a
@@ -23,9 +30,12 @@
 
 set -e
 
-: "${ACCESS_TOKEN:?ERROR: ACCESS_TOKEN is required (set in /etc/environment on workshop EC2)}"
 : "${REALM:?ERROR: REALM is required (set in /etc/environment on workshop EC2)}"
 : "${INSTANCE:?ERROR: INSTANCE is required (set in /etc/environment on workshop EC2)}"
+
+# Prefer an explicit API token; fall back to the ingest ACCESS_TOKEN
+ACCESS_TOKEN="${SPLUNK_API_TOKEN:-${ACCESS_TOKEN:-}}"
+: "${ACCESS_TOKEN:?ERROR: Set SPLUNK_API_TOKEN (API-scoped) or ACCESS_TOKEN}"
 
 ENV="${INSTANCE}-workshop"
 
