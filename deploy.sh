@@ -20,8 +20,28 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")/scripts" && pwd)"
 
 # ── Validate required inputs ──────────────────────────────────
-: "${TE_ACCOUNT_TOKEN:?ERROR: Set TE_ACCOUNT_TOKEN (ThousandEyes Account Group Token)}"
 : "${TE_BEARER_TOKEN:?ERROR: Set TE_BEARER_TOKEN (ThousandEyes API Bearer Token)}"
+
+# Auto-fetch TE_ACCOUNT_TOKEN if not provided (03-deploy-te-agent.sh will also attempt this)
+if [ -z "${TE_ACCOUNT_TOKEN}" ]; then
+  echo "==> TE_ACCOUNT_TOKEN not set — fetching from API using TE_BEARER_TOKEN..."
+  TE_ACCOUNT_TOKEN=$(curl -s https://api.thousandeyes.com/v7/account-groups \
+    -H "Authorization: Bearer ${TE_BEARER_TOKEN}" \
+    | python3 -c "
+import json, sys
+ags = json.load(sys.stdin).get('accountGroups', [])
+current = [ag for ag in ags if ag.get('isCurrentAccountGroup')]
+ag = current[0] if current else (ags[0] if ags else None)
+if ag:
+    token = ag.get('accountToken', '')
+    if token:
+        print(token)
+    else:
+        sys.stderr.write('WARNING: accountToken not in response — will retry in 03-deploy-te-agent.sh\n')
+" 2>/dev/null)
+  [ -n "${TE_ACCOUNT_TOKEN}" ] && echo "==> TE_ACCOUNT_TOKEN fetched." || echo "==> TE_ACCOUNT_TOKEN will be fetched by deploy-te-agent step."
+  export TE_ACCOUNT_TOKEN
+fi
 : "${AGENT_HOSTNAME:?ERROR: Set AGENT_HOSTNAME (unique name for TE agent, e.g. your-name)}"
 : "${TEST_PREFIX:=${AGENT_HOSTNAME}}"
 
