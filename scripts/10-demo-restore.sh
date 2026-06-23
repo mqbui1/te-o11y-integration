@@ -29,11 +29,11 @@ kubectl create secret generic llm-secret \
   --from-literal=mock_mode="true" \
   --dry-run=client -o yaml | kubectl apply -f -
 
-echo "==> Restarting all agents to pick up restored config..."
-kubectl rollout restart deployment/orchestrator deployment/flight-agent \
+echo "==> Restarting specialist agents to pick up restored LLM config..."
+kubectl rollout restart deployment/flight-agent \
   deployment/hotel-agent deployment/activity-agent deployment/synthesizer \
   -n travel-planner
-kubectl rollout status deployment/orchestrator deployment/flight-agent \
+kubectl rollout status deployment/flight-agent \
   deployment/hotel-agent deployment/activity-agent deployment/synthesizer \
   -n travel-planner --timeout=120s
 
@@ -42,4 +42,5 @@ echo "==> All services restored."
 echo ""
 echo "    ThousandEyes: all tests should return to green within ~2 minutes"
 echo "    Splunk APM:   healthy travel.plan traces resume immediately"
+echo "    Splunk Alerts: detectors auto-clear within ~1-3 minutes"
 echo "============================================================"
