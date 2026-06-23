@@ -174,13 +174,16 @@ agents = [
     ("synthesizer",     TE_SYNTH,    "Synthesizer"),
 ]
 
-prog_lines = []
+# Orchestrator health stream (shared across all rules)
+prog_lines = [
+    f"orch = data('http.server.duration_count', filter=filter('service.name', 'orchestrator') and filter('deployment.environment', '{ENV}') and filter('http.method', 'POST'), rollup='sum', extrapolation='zero', maxExtrapolations=5).sum().sum(over='2m')",
+]
 rules2     = []
 for svc, te_id, label in agents:
     var = svc.replace("-", "_")
     prog_lines += [
-        f"{var} = data('http.server.duration_count', filter=filter('service.name', '{svc}') and filter('deployment.environment', '{ENV}'), rollup='sum', extrapolation='zero', maxExtrapolations=5).sum().sum(over='2m')",
-        f"detect(when({var} == 0), off=when({var} > 0, lasting='1m')).publish('{var}_down')",
+        f"{var} = data('http.server.duration_count', filter=filter('service.name', '{svc}') and filter('deployment.environment', '{ENV}') and filter('http.method', 'POST'), rollup='sum', extrapolation='zero', maxExtrapolations=5).sum().sum(over='2m')",
+        f"detect(when(orch > 0 and {var} == 0), off=when({var} > 0, lasting='1m')).publish('{var}_down')",
     ]
     rule_body = f"""{{{{severity}}}} alert — {{{{detectorName}}}}
 
@@ -208,14 +211,16 @@ Symptom:    ERROR span (connection refused). Click te.test.id on the span
 
 ━━━ Detection Logic ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-{var} = data('http.server.duration_count', filter=filter('service.name', '{svc}') and filter('deployment.environment', '{ENV}'), rollup='sum', extrapolation='zero', maxExtrapolations=5).sum().sum(over='2m')
-detect(when({var} == 0), off=when({var} > 0, lasting='1m')).publish('{var}_down')"""
+orch = data('http.server.duration_count', filter=filter('service.name', 'orchestrator')...).sum().sum(over='2m')
+{var} = data('http.server.duration_count', filter=filter('service.name', '{svc}')...).sum().sum(over='2m')
+detect(when(orch > 0 and {var} == 0), off=when({var} > 0, lasting='1m')).publish('{var}_down')
+Note: only fires when orchestrator is healthy — avoids cascade from Scenario 1."""
 
     rules2.append({
         "severity": "Critical",
         "detectLabel": f"{var}_down",
         "name": f"{label} unreachable",
-        "description": f"No requests to {svc} for 2 minutes",
+        "description": f"No requests to {svc} for 2 minutes (while orchestrator is healthy)",
         "parameterizedBody": rule_body,
         "notifications": []
     })
@@ -224,7 +229,7 @@ name2 = f"[Travel Planner] Scenario 2: Specialist Agent Unreachable ({ENV})"
 print("==> Scenario 2: Specialist Agent Unreachable")
 upsert({
     "name": name2,
-    "description": "Fires when any specialist agent receives zero requests for 2 minutes",
+    "description": "Fires when a specialist agent gets no requests while orchestrator is healthy",
     "programText": "\n".join(prog_lines),
     "rules": rules2
 })
