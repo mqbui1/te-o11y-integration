@@ -246,6 +246,8 @@ This scales the orchestrator deployment to 0 replicas. The Kubernetes service DN
 bash scripts/10-demo-restore.sh
 ```
 
+> **Pro tip:** While waiting for the Scenario 1 detector to fire (~3 min), prep Scenario 3 in a second terminal by running `bash scripts/09-demo-llm-unreachable.sh`. By the time Scenario 1 is done and Scenario 2 is shown, Scenario 3 is already staged and ready — no extra wait.
+
 ---
 
 ## Scenario 2: Agent-to-Agent Communication Failure
@@ -287,7 +289,7 @@ This scales the target agent to 0 replicas. The orchestrator will still complete
 **Splunk Alert:**
 
 - Detector: `[Travel Planner] Scenario 2: Specialist Agent Unreachable`
-- Fires after **2 minutes** of zero requests to the affected agent
+- Fires after **2 minutes** of zero requests to the affected agent **while the orchestrator is healthy** — if the orchestrator is also down, Scenario 2 stays silent (only Scenario 1 fires)
 - Alert email is specific to the agent — Flight Specialist alert links to the Flight Specialist TE test, not a generic link
 - Other agents (hotel, activity, synthesizer) do not alert — they're healthy
 
@@ -315,7 +317,7 @@ All agents are running and responding to health checks. The orchestrator can rea
 bash scripts/09-demo-llm-unreachable.sh
 ```
 
-This reconfigures the LLM secret to point all agents at `http://192.0.2.1` — an RFC 5737 TEST-NET IP that is guaranteed non-routable. Agents connect, attempt to call the "LLM," time out after 10 seconds, and return a 500 error. The orchestrator receives a valid HTTP response (the agent responded with 500) but the itinerary content is degraded.
+This reconfigures the LLM secret to use an invalid OpenAI API key. Agents attempt to call OpenAI, receive an immediate 401 AuthenticationError, and return a 500 error. The script also fires a `/plan` request immediately — no need to wait for the load generator. The orchestrator receives a valid HTTP response (the agent responded with 500) but the itinerary content is degraded.
 
 ### What to Show
 
@@ -326,15 +328,14 @@ This reconfigures the LLM secret to point all agents at `http://192.0.2.1` — a
 3. `[prefix] LLM - OpenAI Status` → **green** (`status.openai.com` is reachable from the cluster)
 4. Key point: every ThousandEyes test is green — this is definitively **not a network problem**
 
-**Splunk APM (~30 seconds after trigger):**
+**Splunk APM (immediate — request fired by the script):**
 
 1. APM → Services → `flight-agent` → `POST /invoke` operation
 2. Recent traces show **ERROR** status (HTTP 500)
-3. Click into a trace — duration is ~31 seconds (OpenAI SDK retries 3× with 10s timeout each)
+3. Click into a trace — duration is short (instant 401, no timeout)
 4. Inside `POST /invoke`, expand the span:
-   - `exception.type: openai.APITimeoutError`
-   - `exception.message: Request timed out.`
-   - Full stacktrace: `httpx → ConnectTimeout → openai.APITimeoutError`
+   - `exception.type: openai.AuthenticationError`
+   - `exception.message: Incorrect API key provided`
 5. The same error appears in `hotel-agent`, `activity-agent`, and `synthesizer`
 6. `orchestrator` → `travel.plan` trace **completes** with degraded output (agents return fallback text)
 
@@ -399,9 +400,10 @@ Agent-to-agent calls, LLM timeouts, partial degradation — these failure modes 
 | Action | Command |
 |--------|---------|
 | Run Scenario 1 | `bash scripts/07-demo-orchestrator-down.sh` |
+| Prep Scenario 3 (during Scenario 1 wait) | `bash scripts/09-demo-llm-unreachable.sh` |
 | Run Scenario 2 | `bash scripts/08-demo-agent-down.sh` |
 | Run Scenario 2 (specific agent) | `AGENT=hotel-agent bash scripts/08-demo-agent-down.sh` |
-| Run Scenario 3 | `bash scripts/09-demo-llm-unreachable.sh` |
+| Run Scenario 3 (if pre-staged) | already active — Splunk alert fires in ~2 min |
 | Restore everything | `bash scripts/10-demo-restore.sh` |
 | Check pod status | `kubectl get deployments -n travel-planner` |
 | Orchestrator logs | `kubectl logs -n travel-planner deployment/orchestrator -f` |
