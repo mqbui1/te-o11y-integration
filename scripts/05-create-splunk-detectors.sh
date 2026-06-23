@@ -145,10 +145,10 @@ Symptom:    No new traces \u2014 service map goes dark. Load generator still run
 
 ━━━ Detection Logic ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-requests = data('http.server.duration_count', filter=filter('service.name', 'orchestrator') and filter('deployment.environment', '{ENV}') and filter('http.route', '/plan'), rollup='sum', extrapolation='zero', maxExtrapolations=5).sum().sum(over='2m')
+requests = data('http.server.duration_count', filter=filter('service.name', 'orchestrator') and filter('deployment.environment', '{ENV}') and filter('http.method', 'POST'), rollup='sum', extrapolation='zero', maxExtrapolations=5).sum().sum(over='2m')
 detect(when(requests == 0), off=when(requests > 0, lasting='1m')).publish('orchestrator_down')"""
 
-prog1 = f"""requests = data('http.server.duration_count', filter=filter('service.name', 'orchestrator') and filter('deployment.environment', '{ENV}') and filter('http.route', '/plan'), rollup='sum', extrapolation='zero', maxExtrapolations=5).sum().sum(over='2m')
+prog1 = f"""requests = data('http.server.duration_count', filter=filter('service.name', 'orchestrator') and filter('deployment.environment', '{ENV}') and filter('http.method', 'POST'), rollup='sum', extrapolation='zero', maxExtrapolations=5).sum().sum(over='2m')
 detect(when(requests == 0), off=when(requests > 0, lasting='1m')).publish('orchestrator_down')"""
 
 print("==> Scenario 1: Orchestrator Unreachable")
