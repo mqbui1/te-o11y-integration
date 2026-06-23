@@ -58,6 +58,71 @@ In **mock mode** (demo default), agents return pre-built responses without calli
 
 ---
 
+## How the Stack is Instrumented
+
+Understanding the instrumentation helps answer customer questions during the demo — here's the one-minute version of how data gets from the app to Splunk.
+
+### OTel SDK — built into the application code
+
+Every service initializes the OTel SDK at startup via a shared `setup_otel()` function (`travel-planner/shared/otel_setup.py`). This sets up three signal pipelines:
+
+| Signal | How it's captured | Where it goes |
+|--------|-------------------|---------------|
+| **Traces** | `RequestsInstrumentor` auto-instruments every inter-service HTTP call; `LangchainInstrumentor` captures LLM prompts and completions | OTLP gRPC → collector |
+| **Metrics** | OTel SDK PeriodicExportingMetricReader (every 60s) | OTLP gRPC → collector |
+| **Logs** | OTel SDK BatchLogRecordProcessor | OTLP gRPC → collector |
+
+No code changes are needed to get traces — `RequestsInstrumentor` automatically wraps the `requests` library calls the orchestrator uses to call agents. It also injects W3C `traceparent` headers into each outbound request, so the trace propagates across all five services and appears as a single connected trace in Splunk APM.
+
+### Collector endpoint — injected via Kubernetes downward API
+
+The OTLP endpoint is not hardcoded. Each pod's manifest resolves it at runtime using the **node's IP address**:
+
+```yaml
+- name: SPLUNK_OTEL_AGENT
+  valueFrom:
+    fieldRef:
+      fieldPath: status.hostIP       # the Kubernetes node this pod landed on
+
+- name: OTEL_EXPORTER_OTLP_ENDPOINT
+  value: "http://$(SPLUNK_OTEL_AGENT):4317"
+```
+
+The Splunk OTel Collector runs as a **DaemonSet** — one pod per node — so every app pod automatically points at the collector on its own node. This is the standard Kubernetes pattern: no service discovery, no configuration drift.
+
+### Collector → Splunk Observability Cloud
+
+The collector was deployed via Helm with the workshop's Splunk access token and realm. It batches all signals and forwards them to `https://ingest.us1.signalfx.com`. The `deployment.environment` tag (`travelplannerapp-f1b4-workshop`) is stamped onto every span and metric at the collector level — this is how the services appear under the right environment in Splunk APM.
+
+### Full data flow
+
+```
+Travel Planner pod
+  │
+  ├─ RequestsInstrumentor  → span per inter-service HTTP call + traceparent header injection
+  ├─ LangchainInstrumentor → span per LLM prompt/completion
+  └─ OTel SDK              → batches traces, metrics, logs
+       │
+       │  gRPC OTLP to status.hostIP:4317
+       ▼
+  Splunk OTel Collector DaemonSet (same Kubernetes node)
+       │
+       │  HTTPS to ingest.us1.signalfx.com
+       ▼
+  Splunk Observability Cloud
+  ├─ APM      → distributed traces, service map, latency/error rates
+  ├─ Infra    → Kubernetes pod/node metrics
+  └─ Logs     → structured log records correlated to traces by trace ID
+```
+
+### ThousandEyes — separate instrumentation path
+
+The ThousandEyes Enterprise Agent runs as its own pod in the `te-demo` namespace. It is completely independent of the OTel pipeline — it does not touch the application code. It tests the **network layer** by sending real HTTP requests to each service's `/health` endpoint and reporting availability, latency, and path data to ThousandEyes Cloud, which then streams those results to Splunk via an OTel metrics integration.
+
+This separation is the key demo point: two independent measurement systems, one for the network layer (TE) and one for the application layer (APM), that together give complete picture.
+
+---
+
 ## The Load Generator
 
 A Kubernetes **CronJob** runs every 2 minutes and continuously sends travel plan requests to the orchestrator. Each job runs for approximately 2.5 minutes, so there is always active traffic flowing through the system.
@@ -345,6 +410,5 @@ Agent-to-agent calls, LLM timeouts, partial degradation — these failure modes 
 
 | Resource | URL |
 |----------|-----|
-| Splunk APM | `https://app.us1.signalfx.com` → APM → env: `petclinictesting-ecb9-workshop` |
-| Splunk Dashboard | `https://app.us1.signalfx.com/#/dashboard/HKi7BHAA4AA` |
-| ThousandEyes | `https://app.thousandeyes.com` → Test Settings → filter `petclinictesting-ecb9` |
+| Splunk APM | `https://app.us1.signalfx.com` → APM → env: `travelplannerapp-f1b4-workshop` |
+| ThousandEyes | `https://app.thousandeyes.com` → Test Settings → filter `[travelplanner]` |
