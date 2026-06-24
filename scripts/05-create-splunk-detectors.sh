@@ -146,10 +146,10 @@ Symptom:    No new traces \u2014 service map goes dark. Load generator still run
 ━━━ Detection Logic ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 requests = data('http.server.duration_count', filter=filter('service.name', 'orchestrator') and filter('deployment.environment', '{ENV}') and filter('http.method', 'POST'), rollup='sum', extrapolation='zero', maxExtrapolations=5).sum().sum(over='2m')
-detect(when(requests == 0), off=when(requests > 0, lasting='1m')).publish('orchestrator_down')"""
+detect(when(requests == 0), off=when(requests > 0, lasting='30s')).publish('orchestrator_down')"""
 
 prog1 = f"""requests = data('http.server.duration_count', filter=filter('service.name', 'orchestrator') and filter('deployment.environment', '{ENV}') and filter('http.method', 'POST'), rollup='sum', extrapolation='zero', maxExtrapolations=5).sum().sum(over='2m')
-detect(when(requests == 0), off=when(requests > 0, lasting='1m')).publish('orchestrator_down')"""
+detect(when(requests == 0), off=when(requests > 0, lasting='30s')).publish('orchestrator_down')"""
 
 print("==> Scenario 1: Orchestrator Unreachable")
 upsert({
@@ -183,7 +183,7 @@ for svc, te_id, label in agents:
     var = svc.replace("-", "_")
     prog_lines += [
         f"{var} = data('http.server.duration_count', filter=filter('service.name', '{svc}') and filter('deployment.environment', '{ENV}') and filter('http.method', 'POST'), rollup='sum', extrapolation='zero', maxExtrapolations=5).sum().sum(over='2m')",
-        f"detect(when(orch > 0 and {var} == 0), off=when({var} > 0, lasting='1m')).publish('{var}_down')",
+        f"detect(when(orch > 0 and {var} == 0), off=when({var} > 0, lasting='30s')).publish('{var}_down')",
     ]
     rule_body = f"""{{{{severity}}}} alert — {{{{detectorName}}}}
 
