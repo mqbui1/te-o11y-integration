@@ -10,39 +10,44 @@ ThousandEyes runs inside the same Kubernetes cluster as your agents — giving i
 
 ## Architecture
 
-```
-                     User / Load Generator
-                             │
-                             ▼ POST /plan
-┌────────────────────────────────────────────────────────────┐
-│                   travel-planner namespace                  │
-│                                                            │
-│   orchestrator ──→ flight-agent    ← TE health test        │
-│        │       ──→ hotel-agent     ← TE health test        │
-│        │       ──→ activity-agent  ← TE health test        │
-│        │       ──→ synthesizer     ← TE health test        │
-│        │                                                    │
-│        └──→ [LLM: OpenAI / Bedrock]  ← TE LLM test        │
-│                                                            │
-│   te-demo namespace                                        │
-│   └── ThousandEyes Enterprise Agent                        │
-│         (same network vantage as agents)                   │
-│                                                            │
-│   Splunk OTel Collector (DaemonSet)                        │
-│   └── receives traces + metrics from all services          │
-└────────────────────────────────────────────────────────────┘
-          │                          │
-          ▼                          ▼
-  Splunk Observability Cloud    ThousandEyes Cloud
-  ├── APM: distributed traces   ├── HTTP test results
-  ├── Service map                ├── Network path vis
-  └── Infrastructure metrics    └── Availability metrics
-          │                          │
-          └──────────┬───────────────┘
-                     ▼
-           Bi-directional drilldowns:
-           APM span → "View in ThousandEyes"
-           TE test  → "View in APM"
+```mermaid
+flowchart TB
+    USER(["User / Load Generator"])
+
+    subgraph k8s["k3d Cluster · EC2"]
+        direction TB
+
+        subgraph travel["travel-planner namespace"]
+            ORC["orchestrator\nPOST /plan"]
+            FA["flight-agent\nPOST /invoke"]
+            HA["hotel-agent\nPOST /invoke"]
+            AA["activity-agent\nPOST /invoke"]
+            SY["synthesizer\nPOST /invoke"]
+        end
+
+        subgraph te_ns["te-demo namespace"]
+            TEA["ThousandEyes\nEnterprise Agent"]
+        end
+
+        COL["Splunk OTel Collector · DaemonSet"]
+    end
+
+    LLM(["LLM\nOpenAI / Bedrock"])
+    SPL[("Splunk\nObservability Cloud")]
+    TEC[("ThousandEyes\nCloud")]
+
+    USER -- "POST /plan" --> ORC
+    ORC -- "agent.call.*" --> FA & HA & AA & SY
+    FA & HA & AA & SY -- "LLM API" --> LLM
+
+    TEA -. "health test + B3 headers" .-> ORC & FA & HA & AA & SY
+    TEA -. "LLM reachability test" .-> LLM
+
+    ORC & FA & HA & AA & SY -- "OTLP" --> COL
+    COL -- "traces + metrics" --> SPL
+    TEA -- "test results (OTLP)" --> SPL
+
+    SPL <-- "bi-directional drilldowns\nAPM span ↔ TE test" --> TEC
 ```
 
 ## How the Demo Works
