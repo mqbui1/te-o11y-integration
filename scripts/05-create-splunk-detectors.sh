@@ -139,6 +139,8 @@ Time:       {{{{timestamp}}}}
 
 ━━━ Application Triage (Splunk APM) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+https://app.{REALM}.signalfx.com/#/apm?environment={ENV}
+
 Service:    orchestrator
 Operation:  travel.plan
 Symptom:    No new traces \u2014 service map goes dark. Load generator still running.
@@ -203,6 +205,8 @@ Time:       {{{{timestamp}}}}
 
 ━━━ Application Triage (Splunk APM) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+https://app.{REALM}.signalfx.com/#/apm?environment={ENV}
+
 Service:    orchestrator
 Operation:  agent.call.{svc}
 Symptom:    ERROR span (connection refused). Click te.test.id on the span
@@ -254,6 +258,8 @@ Time:       {{{{timestamp}}}}
 \u2022 Network DEGRADED \u2192 Egress routing or firewall blocking LLM traffic.
 
 ━━━ Application Triage (Splunk APM) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+https://app.{REALM}.signalfx.com/#/apm?environment={ENV}
 
 Services:   flight-agent, hotel-agent, activity-agent, synthesizer
 Operation:  POST /invoke
