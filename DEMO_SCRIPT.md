@@ -170,6 +170,20 @@ Because distributed tracing is enabled on all agent health tests, each TE-initia
 
 ---
 
+## Demo Scenarios Overview
+
+Three scenarios, each showing a different failure mode. In every case, ThousandEyes answers the network question instantly — so the team knows whether to look at infrastructure or application config.
+
+| Scenario | What breaks | TE signal | APM signal | Root cause |
+|----------|-------------|-----------|------------|------------|
+| **1 — Orchestrator Unreachable** | Entry point scaled to 0 | Orchestrator test → 0% availability. All other tests green. | No new `travel.plan` traces. Service map goes dark. | Pod down / crashloop |
+| **2 — Specialist Agent Down** | One agent scaled to 0 | That agent's test → 0%. Orchestrator + all other agents still green. | `travel.plan` completes with fallback. `agent.call.<agent>` span → ERROR. Click `te.test.id` → "View in ThousandEyes". | Pod down on one path |
+| **3 — LLM Auth Failure** | Invalid API key injected | All 6 tests green — including the LLM reachability test. | All `agent.call.*` spans succeed. LangChain spans inside each agent → ERROR (`AuthenticationError`). | App config issue (not network) |
+
+**The pattern:** TE green + APM error = application problem. TE red = network problem. That distinction, answered in under 2 minutes, is the whole demo.
+
+---
+
 ## Pre-Demo Health Check
 
 Before starting, verify everything is green:
