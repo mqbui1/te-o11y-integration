@@ -55,6 +55,9 @@ kubectl rollout status deployment/flight-agent deployment/hotel-agent \
   deployment/activity-agent deployment/synthesizer \
   -n travel-planner --timeout=120s
 
+echo "==> Waiting for pods to fully initialize..."
+sleep 10
+
 echo "==> Triggering an immediate /plan request to surface errors now..."
 kubectl run --rm -i --restart=Never llm-trigger-$$ \
   --image=curlimages/curl:latest -n travel-planner -- \
