@@ -72,8 +72,12 @@ def setup_otel(service_name: str) -> None:
     _events.set_event_logger_provider(EventLoggerProvider())
 
     handler = LoggingHandler(level=logging.NOTSET, logger_provider=log_provider)
-    logging.getLogger().addHandler(handler)
-    logging.getLogger().setLevel(logging.INFO)
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s"))
+    root = logging.getLogger()
+    root.addHandler(handler)
+    root.addHandler(stream_handler)
+    root.setLevel(logging.INFO)
 
     # Instrumentations — LangChain spans + outbound HTTP context propagation
     LangchainInstrumentor().instrument()
