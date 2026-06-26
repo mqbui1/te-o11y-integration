@@ -228,6 +228,22 @@
 
 ---
 
+## Log-Trace Correlation — If Asked
+
+All five services emit structured logs with `trace_id` and `span_id` automatically injected by the OTel SDK. During any failure scenario, error logs include the full exception stack trace.
+
+**Search in Splunk Platform** (`https://o11y-workshop-amer.splunkcloud.com`):
+```
+index=splunk4rookies-workshop log_level=ERROR earliest=-5m
+| table _time service.name body trace_id
+```
+
+Copy a `trace_id` from a log → paste into Splunk APM trace search to jump directly to the failing trace, or click **Related Content → Logs** in APM (requires Log Observer Connect).
+
+**Log Observer Connect caveat:** Requires a Splunk Platform service account (admin access to `o11y-workshop-amer.splunkcloud.com`). The shared workshop Splunk Cloud instance is managed by the workshop organizer — participants typically cannot create service accounts. Contact whoever provisioned the workshop to enable the APM → Logs Related Content button.
+
+---
+
 ## Business Value — If Asked
 
 | The old way | With this stack |
@@ -238,6 +254,7 @@
 | Manual correlation between monitoring tools | `te.test.id` embedded in every APM span — one click |
 | Reactive alerting after user complaints | TE detects failures proactively from inside the cluster |
 | Generic alerts with no triage guidance | Alerts link directly to the relevant TE test + decision tree |
+| No RCA evidence after incident | Full exception stack traces in logs, correlated to APM trace by `trace_id` |
 
 ---
 
@@ -255,3 +272,4 @@
 | Splunk APM | `https://app.us1.signalfx.com` → APM → env: `travelplannerapp-f1b4-workshop` |
 | ThousandEyes | `https://app.thousandeyes.com` → Test Settings → filter `travelplannerapp-f1b4` |
 | Splunk Alerts | `https://app.us1.signalfx.com` → Alerts → Detectors → filter `Travel Planner` |
+| Splunk Platform logs | `https://o11y-workshop-amer.splunkcloud.com` → Search: `index=splunk4rookies-workshop log_level=ERROR earliest=-5m` |
