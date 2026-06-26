@@ -54,7 +54,7 @@ def invoke():
             result = response.content
             logger.info("LLM activity response received successfully")
         except Exception as e:
-            logger.error("LLM call failed in activity-agent: %s", e)
+            logger.exception("LLM call failed in activity-agent")
             raise
 
     return jsonify({"result": result, "service": "activity-agent"})
