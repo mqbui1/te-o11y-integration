@@ -1,4 +1,5 @@
 """Shared OpenTelemetry setup for all travel-planner services."""
+import logging
 import os
 
 from opentelemetry import _events, _logs, metrics, propagate, trace
@@ -11,7 +12,7 @@ from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.propagators.b3 import B3Format
 from opentelemetry.propagators.composite import CompositePropagator
 from opentelemetry.sdk._events import EventLoggerProvider
-from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
@@ -64,11 +65,15 @@ def setup_otel(service_name: str) -> None:
         MeterProvider(resource=resource, metric_readers=[metric_reader])
     )
 
-    # Logs
+    # Logs — bridge Python logging → OTel SDK so trace_id/span_id inject automatically
     log_provider = LoggerProvider(resource=resource)
     log_provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter()))
     _logs.set_logger_provider(log_provider)
     _events.set_event_logger_provider(EventLoggerProvider())
+
+    handler = LoggingHandler(level=logging.NOTSET, logger_provider=log_provider)
+    logging.getLogger().addHandler(handler)
+    logging.getLogger().setLevel(logging.INFO)
 
     # Instrumentations — LangChain spans + outbound HTTP context propagation
     LangchainInstrumentor().instrument()

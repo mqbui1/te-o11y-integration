@@ -12,11 +12,14 @@ from shared.otel_setup import register_te_middleware, setup_otel, stamp_te_span
 
 setup_otel("activity-agent")
 
+import logging
+
 from flask import Flask, jsonify, request
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 
 from shared.tools import create_llm, search_activities
 
+logger = logging.getLogger(__name__)
 app = Flask(__name__)
 FlaskInstrumentor().instrument_app(app)
 register_te_middleware(app)
@@ -34,6 +37,7 @@ def invoke():
     destination = payload.get("destination", "Paris")
     travellers = int(payload.get("travellers", 2))
 
+    logger.info("activity-agent invoked: destination=%s", destination)
     mock_result = search_activities(destination)
 
     llm = create_llm()
@@ -41,10 +45,16 @@ def invoke():
         result = mock_result
     else:
         from langchain_core.messages import HumanMessage, SystemMessage
-        response = llm.invoke([
-            SystemMessage(content="You are an activity specialist. Curate and present experiences engagingly."),
-            HumanMessage(content=f"Available experiences: {mock_result}\n\nPresent these as curated recommendations for {travellers} travellers spending a week in {destination}."),
-        ])
-        result = response.content
+        logger.info("Calling LLM to curate activity recommendations")
+        try:
+            response = llm.invoke([
+                SystemMessage(content="You are an activity specialist. Curate and present experiences engagingly."),
+                HumanMessage(content=f"Available experiences: {mock_result}\n\nPresent these as curated recommendations for {travellers} travellers spending a week in {destination}."),
+            ])
+            result = response.content
+            logger.info("LLM activity response received successfully")
+        except Exception as e:
+            logger.error("LLM call failed in activity-agent: %s", e)
+            raise
 
     return jsonify({"result": result, "service": "activity-agent"})

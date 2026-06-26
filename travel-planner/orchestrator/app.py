@@ -32,11 +32,15 @@ setup_otel("orchestrator")
 
 from datetime import datetime, timedelta
 
+import logging
+
 import requests
 from flask import Flask, jsonify, request
 from opentelemetry import trace
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.trace import SpanKind, StatusCode
+
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 FlaskInstrumentor().instrument_app(app)
@@ -89,10 +93,12 @@ def _call_agent(agent_key: str, url: str, payload: dict, timeout: int = 30):
         if TE_AGENT_NAME:
             span.set_attribute("te.agent.name", TE_AGENT_NAME)
 
+        logger.info("Calling agent %s at %s", agent_key, url)
         try:
             resp = requests.post(url, json=payload, timeout=timeout)
             resp.raise_for_status()
             span.set_attribute("http.status_code", resp.status_code)
+            logger.info("Agent %s responded successfully (HTTP %s)", agent_key, resp.status_code)
             return resp.json().get("result", "")
         except Exception as e:
             span.set_status(StatusCode.ERROR, str(e))
@@ -100,6 +106,7 @@ def _call_agent(agent_key: str, url: str, payload: dict, timeout: int = 30):
             if te_test_name:
                 span.set_attribute("te.correlation",
                     f"Check TE test '{te_test_name}' for network-layer root cause")
+            logger.error("Agent call failed: %s - %s", agent_key, e)
             raise
 
 
@@ -123,6 +130,10 @@ def plan():
         span.set_attribute("travel.travellers", travellers)
         span.set_attribute("travel.departure", departure)
 
+        logger.info(
+            "travel.plan started: %s → %s, %d traveller(s), depart %s",
+            origin, destination, travellers, departure,
+        )
         errors = []
 
         try:
@@ -159,6 +170,9 @@ def plan():
 
         if errors:
             span.set_attribute("travel.errors", ", ".join(errors))
+            logger.warning("travel.plan completed with errors: %s", ", ".join(errors))
+        else:
+            logger.info("travel.plan completed successfully: %s → %s", origin, destination)
 
         return jsonify({
             "origin": origin, "destination": destination,

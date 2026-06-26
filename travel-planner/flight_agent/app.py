@@ -13,11 +13,14 @@ from shared.otel_setup import register_te_middleware, setup_otel, stamp_te_span
 
 setup_otel("flight-agent")
 
+import logging
+
 from flask import Flask, jsonify, request
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 
 from shared.tools import create_llm, search_flights
 
+logger = logging.getLogger(__name__)
 app = Flask(__name__)
 FlaskInstrumentor().instrument_app(app)
 register_te_middleware(app)
@@ -36,6 +39,7 @@ def invoke():
     destination = payload.get("destination", "Paris")
     departure = payload.get("departure", "2026-08-01")
 
+    logger.info("flight-agent invoked: %s → %s on %s", origin, destination, departure)
     mock_result = search_flights(origin, destination, departure)
 
     travellers = int(payload.get("travellers", 2))
@@ -44,10 +48,16 @@ def invoke():
         result = mock_result
     else:
         from langchain_core.messages import HumanMessage, SystemMessage
-        response = llm.invoke([
-            SystemMessage(content="You are a flight specialist. Present the flight option concisely and professionally."),
-            HumanMessage(content=f"Flight data: {mock_result}\n\nPresent this as a recommendation for {travellers} travellers from {origin} to {destination} on {departure}."),
-        ])
-        result = response.content
+        logger.info("Calling LLM to format flight recommendation")
+        try:
+            response = llm.invoke([
+                SystemMessage(content="You are a flight specialist. Present the flight option concisely and professionally."),
+                HumanMessage(content=f"Flight data: {mock_result}\n\nPresent this as a recommendation for {travellers} travellers from {origin} to {destination} on {departure}."),
+            ])
+            result = response.content
+            logger.info("LLM flight response received successfully")
+        except Exception as e:
+            logger.error("LLM call failed in flight-agent: %s", e)
+            raise
 
     return jsonify({"result": result, "service": "flight-agent"})
