@@ -156,6 +156,51 @@ Enables "View in APM" from ThousandEyes test results.
 
 > Cannot be created via API (returns 405). Requires Account Admin role in ThousandEyes.
 
+## Log-Trace Correlation
+
+All five travel-planner services emit structured logs via the OpenTelemetry Python SDK. Every log record is automatically tagged with `trace_id` and `span_id` from the active span — enabling trace-to-log correlation in Splunk.
+
+### How it works
+
+```
+Python logger.info/error/exception()
+    ↓  LoggingHandler (auto-injects trace_id + span_id)
+OTel LoggerProvider → OTLPLogExporter → Splunk OTel Collector
+    ↓  logs pipeline (otlp receiver → splunk_hec/platform_logs)
+Splunk Platform HEC  →  splunk4rookies-workshop index
+```
+
+Each service logs:
+- **Orchestrator**: plan start (origin/destination/travellers), each agent call (start/success/failure), plan completion
+- **Specialist agents**: invoke received, LLM call attempt, LLM success/failure with full stack trace
+- **Synthesizer**: synthesis start, LLM call, success/failure with full stack trace
+
+Errors use `logger.exception()` — the full stack trace is included in the log body (e.g. `openai.APIConnectionError`, `AuthenticationError` for Scenario 3).
+
+### Searching logs in Splunk Platform
+
+```
+index=splunk4rookies-workshop service.name="orchestrator" earliest=-15m
+| table _time service.name body trace_id span_id
+
+index=splunk4rookies-workshop log_level=ERROR earliest=-5m
+| table _time service.name body trace_id
+```
+
+### Log Observer Connect (optional — requires Splunk Platform admin access)
+
+Log Observer Connect links Splunk APM traces to Splunk Platform logs via the **Related Content** button in the APM trace view. Setup requires:
+
+1. **Splunk Platform** — a service account with `search` capability scoped to `splunk4rookies-workshop` index. Requires admin access to `o11y-workshop-amer.splunkcloud.com`.
+2. **Splunk Observability Cloud** — `Settings → Log Observer Connect → Add Connection`:
+   - URL: `https://o11y-workshop-amer.splunkcloud.com`, Port: `8089`
+   - Credentials from step 1
+   - Index: `splunk4rookies-workshop`
+
+> **Workshop caveat:** The shared Splunk Cloud instance (`o11y-workshop-amer.splunkcloud.com`) is managed by the workshop organizer. Participants typically do not have admin access and cannot create service accounts. Log Observer Connect must be configured by whoever provisioned the workshop environment. The logs themselves are still fully searchable in Splunk Platform directly.
+
+---
+
 ## Demo Scenarios
 
 Three scenarios showing how ThousandEyes and Splunk APM together give instant root cause clarity on AI agent failures. Run any scenario, walk through both tools, then restore.
