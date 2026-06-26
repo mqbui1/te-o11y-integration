@@ -5,6 +5,7 @@ POST /invoke: takes flight/hotel/activities summaries and produces a
 structured day-by-day travel itinerary using the LLM.
 """
 import json
+import logging
 import os
 import sys
 
@@ -19,6 +20,7 @@ from opentelemetry.instrumentation.flask import FlaskInstrumentor
 
 from shared.tools import create_llm
 
+logger = logging.getLogger(__name__)
 app = Flask(__name__)
 FlaskInstrumentor().instrument_app(app)
 register_te_middleware(app)
@@ -42,6 +44,10 @@ def invoke():
     hotel_summary = payload.get("hotel_summary", "")
     activities_summary = payload.get("activities_summary", "")
 
+    logger.info(
+        "synthesizer invoked: %s → %s, %s to %s, %d traveller(s)",
+        origin, destination, departure, return_date, travellers,
+    )
     llm = create_llm()
     if llm is None:
         result = (
@@ -56,20 +62,26 @@ def invoke():
             {"flight": flight_summary, "hotel": hotel_summary, "activities": activities_summary},
             indent=2,
         )
-        response = llm.invoke([
-            SystemMessage(
-                content=(
-                    "You are a travel plan synthesizer. Combine the specialist summaries into a "
-                    "concise, structured 7-day itinerary with day-by-day highlights. Be warm and engaging."
-                )
-            ),
-            HumanMessage(
-                content=(
-                    f"Trip: {origin} to {destination}, {departure} to {return_date}, {travellers} travellers.\n\n"
-                    f"Specialist summaries:\n{specialist_data}"
-                )
-            ),
-        ])
-        result = response.content
+        logger.info("Calling LLM to synthesize final itinerary")
+        try:
+            response = llm.invoke([
+                SystemMessage(
+                    content=(
+                        "You are a travel plan synthesizer. Combine the specialist summaries into a "
+                        "concise, structured 7-day itinerary with day-by-day highlights. Be warm and engaging."
+                    )
+                ),
+                HumanMessage(
+                    content=(
+                        f"Trip: {origin} to {destination}, {departure} to {return_date}, {travellers} travellers.\n\n"
+                        f"Specialist summaries:\n{specialist_data}"
+                    )
+                ),
+            ])
+            result = response.content
+            logger.info("LLM synthesis completed successfully")
+        except Exception as e:
+            logger.error("LLM synthesis failed: %s", e)
+            raise
 
     return jsonify({"result": result, "service": "synthesizer"})
