@@ -106,7 +106,7 @@ def _call_agent(agent_key: str, url: str, payload: dict, timeout: int = 30):
             if te_test_name:
                 span.set_attribute("te.correlation",
                     f"Check TE test '{te_test_name}' for network-layer root cause")
-            logger.error("Agent call failed: %s - %s", agent_key, e)
+            logger.exception("Agent call failed: %s", agent_key)
             raise
 
 

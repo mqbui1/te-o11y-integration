@@ -56,7 +56,7 @@ def invoke():
             result = response.content
             logger.info("LLM hotel response received successfully")
         except Exception as e:
-            logger.error("LLM call failed in hotel-agent: %s", e)
+            logger.exception("LLM call failed in hotel-agent")
             raise
 
     return jsonify({"result": result, "service": "hotel-agent"})

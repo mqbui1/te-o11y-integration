@@ -57,7 +57,7 @@ def invoke():
             result = response.content
             logger.info("LLM flight response received successfully")
         except Exception as e:
-            logger.error("LLM call failed in flight-agent: %s", e)
+            logger.exception("LLM call failed in flight-agent")
             raise
 
     return jsonify({"result": result, "service": "flight-agent"})

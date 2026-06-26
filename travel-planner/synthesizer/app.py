@@ -81,7 +81,7 @@ def invoke():
             result = response.content
             logger.info("LLM synthesis completed successfully")
         except Exception as e:
-            logger.error("LLM synthesis failed: %s", e)
+            logger.exception("LLM synthesis failed")
             raise
 
     return jsonify({"result": result, "service": "synthesizer"})
