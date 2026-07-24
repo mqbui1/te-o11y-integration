@@ -2,7 +2,7 @@
 
 **Format:** Hands-on, self-guided. Each module = short concept intro + something you deploy/break/observe yourself.
 **Audience:** SRE, platform engineering, AI/ML engineering teams operating (or planning to operate) multi-agent AI systems in production.
-**Total time:** ~2h45m (can be split across two sessions, or trimmed — see "If you only have 90 minutes" below)
+**Total time:** ~2h30m (can be split across two sessions, or trimmed — see "If you only have 90 minutes" below)
 
 Every module below maps to a specific operational pain point. The point of the workshop isn't the tooling — it's proving, on your own keyboard, that you can answer "network or app?" in under two minutes, and that you have an audit trail when the answer matters.
 
@@ -20,8 +20,9 @@ Every module below maps to a specific operational pain point. The point of the w
 | 5 | [Scenario 1: Entry Point Down](./05-scenario-entry-point-down.md) | 15 min | Break the orchestrator, triage with TE + APM | MTTR — who do you call first? |
 | 6 | [Scenario 2: Agent Path Broken](./06-scenario-agent-path-broken.md) | 15 min | Break one specialist agent, isolate the failure | Partial degradation is the hardest to catch — TE isolates it in one test |
 | 7 | [Scenario 3: LLM Auth Failure](./07-scenario-llm-failure.md) | 20 min | Break the LLM call, prove it's not the network | LLM dependency risk — the #1 most expensive triage question in AI ops |
-| 8 | [Log Correlation & RCA](./08-log-correlation-rca.md) | 15 min | Pull the exact exception tied to a trace_id | Audit trail — evidence of what the AI system did, when, why |
-| 9 | [Wrap-Up & Next Steps](./09-wrap-up.md) | 10 min | Teardown, discussion, POC scoping | Turn today into a business case |
+| 8 | [Wrap-Up & Next Steps](./08-wrap-up.md) | 10 min | Teardown, discussion, POC scoping | Turn today into a business case |
+
+> **Note:** log-trace correlation (structured logs auto-tagged with `trace_id`, full exception stack traces) is instrumented and visible in Module 2, but a standalone Splunk Platform log-search exercise isn't included in this run — the shared workshop environment doesn't include a Splunk Cloud instance for participants. See the note in Module 8.
 
 ---
 
@@ -32,7 +33,7 @@ Every module below maps to a specific operational pain point. The point of the w
 **What you'll leave with:**
 - A running 5-service AI multi-agent system, fully instrumented, on your own infrastructure
 - Hands-on experience triaging 3 realistic failure modes using ThousandEyes + Splunk APM together
-- A working log-to-trace correlation pattern you can lift directly into your own services
+- A log-to-trace correlation pattern (visible in code in Module 2) you can lift directly into your own services
 - A clear view of what it takes to stand this up in your own environment (not just watch someone else do it)
 
 **How to use this workshop:** Each module is a markdown file with commands to run and things to look for. Run the commands yourself — don't just read them. If something doesn't match what's described, that's a great discussion point, not a failure.
@@ -45,14 +46,13 @@ The modules build in a deliberate order:
 
 1. **Setup → Instrumentation → TE config → Alerting** (Modules 1–4) establishes the full observability pipeline *before* anything breaks — so when you see a scenario later, you already understand every signal you're looking at, not just following a script.
 2. **Three failure scenarios** (Modules 5–7) go from simplest to most nuanced: total outage → partial degradation → the dangerous "everything looks healthy but isn't" case. This mirrors how failure complexity actually escalates in production.
-3. **Log correlation** (Module 8) comes last among the technical modules because by then you've generated real error traces to correlate against — it's not abstract.
-4. **Wrap-up** (Module 9) is deliberately short and discussion-driven — the goal is to turn the hands-on experience into a decision about next steps, not another lecture.
+3. **Wrap-up** (Module 8) is deliberately short and discussion-driven — the goal is to turn the hands-on experience into a decision about next steps, not another lecture.
 
 ---
 
 ## If You Only Have 90 Minutes
 
-Run: **Module 1** (setup, 20 min) → **Module 7** (LLM failure scenario, 20 min — the highest-value scenario for AI-specific risk) → **Module 8** (log correlation, 15 min) → **Module 9** (wrap-up, 10 min). Skip Modules 2–6 and read them afterward as reference.
+Run: **Module 1** (setup, 20 min) → **Module 7** (LLM failure scenario, 20 min — the highest-value scenario for AI-specific risk) → **Module 8** (wrap-up, 10 min). Skip Modules 2–6 and read them afterward as reference.
 
 ## Prerequisites
 
@@ -61,4 +61,4 @@ Run: **Module 1** (setup, 20 min) → **Module 7** (LLM failure scenario, 20 min
 - A ThousandEyes account with an OAuth Bearer Token (Account Settings → User API Tokens)
 - Splunk Observability Cloud access to view APM (credentials provided by workshop organizer)
 
-See [`README.md`](./README.md) for the full setup checklist before starting Module 1.
+See [`README.md`](./README.md) for the full setup checklist before starting Module 1, and [`ROLES.md`](./ROLES.md) for who on your team should attend which modules.

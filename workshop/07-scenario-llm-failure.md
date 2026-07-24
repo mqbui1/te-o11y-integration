@@ -1,4 +1,4 @@
-← [Module 6](./06-scenario-agent-path-broken.md) | Next: [Module 8 — Log Correlation & RCA](./08-log-correlation-rca.md) →
+← [Module 6](./06-scenario-agent-path-broken.md) | Next: [Module 8 — Wrap-Up & Next Steps](./08-wrap-up.md) →
 
 # Module 7: Scenario 3 — LLM Auth Failure (20 min)
 
@@ -55,4 +55,4 @@ Think about your own AI workflows that call Azure OpenAI, Bedrock, or a third-pa
 See repo root README → [Demo Scenarios: Scenario 3](../README.md#scenario-3-agent-to-llm-communication-failure).
 
 ---
-← [Module 6](./06-scenario-agent-path-broken.md) | Next: [Module 8 — Log Correlation & RCA](./08-log-correlation-rca.md) →
+← [Module 6](./06-scenario-agent-path-broken.md) | Next: [Module 8 — Wrap-Up & Next Steps](./08-wrap-up.md) →
