@@ -17,9 +17,13 @@
 #
 # Token (one of the following, in priority order):
 #   SPLUNK_API_TOKEN  - API-scoped token (can create/update detectors)
-#   ACCESS_TOKEN      - Falls back to this if SPLUNK_API_TOKEN is not set.
+#   API_TOKEN         - Falls back to this if SPLUNK_API_TOKEN is not set.
+#                       Pre-set on workshop EC2 instances in /etc/environment —
+#                       API-scoped, works automatically with no extra setup.
+#   ACCESS_TOKEN      - Last resort if neither of the above is set.
 #                       Note: workshop EC2 ACCESS_TOKEN is ingest-only and
-#                       will return 401. Set SPLUNK_API_TOKEN explicitly:
+#                       will return 401 trying to create detectors. If you
+#                       hit 401s, set SPLUNK_API_TOKEN or API_TOKEN explicitly:
 #                         export SPLUNK_API_TOKEN="<api-scope-token>"
 #                         bash scripts/05-create-splunk-detectors.sh
 #
@@ -33,9 +37,10 @@ set -e
 : "${REALM:?ERROR: REALM is required (set in /etc/environment on workshop EC2)}"
 : "${INSTANCE:?ERROR: INSTANCE is required (set in /etc/environment on workshop EC2)}"
 
-# Prefer an explicit API token; fall back to the ingest ACCESS_TOKEN
-ACCESS_TOKEN="${SPLUNK_API_TOKEN:-${ACCESS_TOKEN:-}}"
-: "${ACCESS_TOKEN:?ERROR: Set SPLUNK_API_TOKEN (API-scoped) or ACCESS_TOKEN}"
+# Prefer an explicit API token, then the pre-set API_TOKEN, then fall back
+# to the ingest-only ACCESS_TOKEN (which will 401 on detector creation).
+ACCESS_TOKEN="${SPLUNK_API_TOKEN:-${API_TOKEN:-${ACCESS_TOKEN:-}}}"
+: "${ACCESS_TOKEN:?ERROR: Set SPLUNK_API_TOKEN (API-scoped) or API_TOKEN}"
 
 ENV="${INSTANCE}-workshop"
 

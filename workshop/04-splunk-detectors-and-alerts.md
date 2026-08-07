@@ -16,11 +16,19 @@ Notice each detector's alert body isn't generic — it links to the specific TE 
 
 ## Step 2: Create the detectors (if not already created in Module 1)
 
-Requires an API-scoped Splunk access token (different from the ingest token used for data — ask your organizer if you don't have one).
+Requires an API-scoped Splunk access token (different from the ingest token used for data). Workshop EC2 instances have this pre-set as `API_TOKEN` in `/etc/environment` — `deploy.sh` and the script below pick it up automatically, no extra setup needed.
+
+```bash
+bash scripts/05-create-splunk-detectors.sh
+```
+
+If you're running outside a workshop EC2 instance and don't have `API_TOKEN` pre-set, pass your own API-scoped token instead:
 
 ```bash
 SPLUNK_API_TOKEN=<your-api-scoped-token> bash scripts/05-create-splunk-detectors.sh
 ```
+
+**If you see `ERROR 401: Authentication is required`:** the script fell back to an ingest-only token. Confirm `API_TOKEN` is set (`echo $API_TOKEN`) or pass `SPLUNK_API_TOKEN` explicitly.
 
 ## Step 3: View them in Splunk
 
@@ -44,7 +52,7 @@ Compare this to how alerts are typically written — "CPU > 80%", "error rate > 
 
 ## Troubleshooting
 
-See repo root README → [Scripts](../README.md#scripts) for detector script reference. If detector creation fails, confirm your token has API scope, not just ingest scope.
+See repo root README → [Scripts](../README.md#scripts) for detector script reference. If detector creation fails with a 401, confirm `API_TOKEN` (or `SPLUNK_API_TOKEN`) is set and API-scoped, not just ingest scope.
 
 ---
 ← [Module 3](./03-thousandeyes-configuration.md) | Next: [Module 5 — Scenario 1: Entry Point Down](./05-scenario-entry-point-down.md) →

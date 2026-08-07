@@ -12,7 +12,9 @@
 #   ./deploy.sh
 #
 # The following are pre-set on Splunk workshop EC2 instances:
-#   ACCESS_TOKEN, REALM, INSTANCE, HEC_URL, HEC_TOKEN, RUM_FRONTEND_IP
+#   ACCESS_TOKEN, API_TOKEN, REALM, INSTANCE, HEC_URL, HEC_TOKEN, RUM_FRONTEND_IP
+#   API_TOKEN is API-scoped and used automatically to create Splunk detectors
+#   in Step 5 (ACCESS_TOKEN is ingest-only and cannot create detectors).
 # ============================================================
 
 set -e
@@ -118,10 +120,16 @@ fi
 # ── Step 5: Splunk Detectors ──────────────────────────────────
 echo ""
 echo "[ 5/5 ] Creating Splunk Observability detectors..."
-if [ -z "${SPLUNK_API_TOKEN:-}" ] && [ -z "${ACCESS_TOKEN:-}" ]; then
+# Auto-detect the API-scoped token: prefer an explicit SPLUNK_API_TOKEN, then
+# fall back to API_TOKEN (pre-set on workshop EC2 instances, API-scoped).
+# ACCESS_TOKEN is ingest-only and will 401 if used to create detectors.
+: "${SPLUNK_API_TOKEN:=${API_TOKEN:-}}"
+export SPLUNK_API_TOKEN
+if [ -z "${SPLUNK_API_TOKEN}" ] && [ -z "${ACCESS_TOKEN:-}" ]; then
   echo "  Skipping: set SPLUNK_API_TOKEN (API-scoped) to create detectors automatically."
   echo "  Re-run manually:  SPLUNK_API_TOKEN=<token> bash scripts/05-create-splunk-detectors.sh"
 else
+  [ -n "${SPLUNK_API_TOKEN}" ] && echo "  Using API-scoped token (SPLUNK_API_TOKEN or API_TOKEN)."
   bash "${SCRIPT_DIR}/05-create-splunk-detectors.sh"
 fi
 

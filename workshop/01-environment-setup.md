@@ -33,7 +33,7 @@ This runs five steps in order — watch the terminal output for each:
 2. Travel Planner (5 Flask AI agents + load generator CronJob)
 3. ThousandEyes Enterprise Agent (deployed **inside** the cluster — this is the differentiator, not an external probe)
 4. ThousandEyes tests (5 agent health checks + LLM + external reachability)
-5. Splunk detectors (skipped if `SPLUNK_API_TOKEN` isn't set — see Module 4)
+5. Splunk detectors (auto-detects the API-scoped `API_TOKEN` pre-set on workshop EC2 instances — see Module 4)
 
 Takes ~8–12 minutes. While it runs, read the architecture diagram in the repo root [`README.md`](../README.md#architecture).
 
