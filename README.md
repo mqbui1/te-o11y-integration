@@ -101,7 +101,7 @@ After deployment, two **one-time manual steps** are required for bi-directional 
 | Splunk OTel Collector | `default` | Helm chart, DaemonSet agent + cluster receiver + operator |
 | Travel Planner | `travel-planner` | 5 Python Flask AI agents + CronJob load generator |
 | ThousandEyes Enterprise Agent | `te-demo` | Co-located in cluster for accurate network measurements |
-| ThousandEyes Tests | — | 5 agent health tests + 1 LLM + 4 external |
+| ThousandEyes Tests | — | 5 agent health tests + 1 LLM + 3 external |
 
 ## ThousandEyes Tests
 
@@ -113,7 +113,6 @@ After deployment, two **one-time manual steps** are required for bi-directional 
 | `[prefix] Agent - Activity Specialist` | `/health` in-cluster | Orchestrator→agent network path |
 | `[prefix] Agent - Synthesizer` | `/health` in-cluster | Orchestrator→agent network path |
 | `[prefix] LLM - OpenAI API` | `api.openai.com` | Agent→LLM connectivity |
-| `[prefix] EC2 Instance Health` | `http://<EC2_IP>` | External reachability |
 | `[prefix] Splunk Observability Cloud` | `app.us1.signalfx.com` | Splunk platform reachability |
 | `[prefix] ThousandEyes Platform` | `app.thousandeyes.com` | TE platform reachability |
 

@@ -6,7 +6,6 @@
 #   TE_BEARER_TOKEN  - ThousandEyes OAuth Bearer token
 #   TE_AGENT_ID      - Enterprise Agent ID (find via GET /v7/agents)
 #   TEST_PREFIX      - Prefix for test names (e.g. your-name)
-#   EC2_PUBLIC_IP    - Public IP of the EC2 instance
 #
 # Optional env vars:
 #   AGENT_HOSTNAME   - Used to set TE_AGENT_NAME in ConfigMap (defaults to TEST_PREFIX)
@@ -41,7 +40,6 @@ set -e
 : "${TE_BEARER_TOKEN:?ERROR: TE_BEARER_TOKEN is required}"
 : "${TE_AGENT_ID:?ERROR: TE_AGENT_ID is required}"
 : "${TEST_PREFIX:?ERROR: TEST_PREFIX is required}"
-: "${EC2_PUBLIC_IP:?ERROR: EC2_PUBLIC_IP is required}"
 
 TE_API="https://api.thousandeyes.com/v7/tests/http-server"
 AGENT_HOSTNAME="${AGENT_HOSTNAME:-${TEST_PREFIX}}"
@@ -185,7 +183,6 @@ kubectl rollout restart deployment/orchestrator -n travel-planner
 kubectl rollout status deployment/orchestrator -n travel-planner --timeout=120s
 
 echo "==> Creating external tests..."
-create_test "[${TEST_PREFIX}] EC2 Instance Health"          "http://${EC2_PUBLIC_IP}"              "false" > /dev/null
 create_test "[${TEST_PREFIX}] Stripe API Health"            "https://api.stripe.com/healthcheck"  "false" > /dev/null
 create_test "[${TEST_PREFIX}] Splunk Observability Cloud"   "https://app.us1.signalfx.com"        "false" > /dev/null
 create_test "[${TEST_PREFIX}] ThousandEyes Platform"        "https://app.thousandeyes.com"         "false" > /dev/null

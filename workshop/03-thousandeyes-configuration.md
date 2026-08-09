@@ -40,7 +40,6 @@ You should see:
 | `Agent - Flight/Hotel/Activity Specialist` | `/health` in-cluster |
 | `Agent - Synthesizer` | `/health` in-cluster |
 | `LLM - OpenAI Status` | `status.openai.com` |
-| `EC2 Instance Health` | external reachability |
 
 All should show `UP` / green right now. This same command (with `--watch` appended) is what you'll use to observe outages live in Modules 5–7. (If your organizer *has* set you up with a UI login, `https://app.thousandeyes.com` → Test Settings → filter by your `TEST_PREFIX` shows the same data with more detail.)
 

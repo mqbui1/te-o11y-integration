@@ -56,8 +56,6 @@ fi
 : "${REALM:?ERROR: REALM not set (should be in /etc/environment)}"
 : "${INSTANCE:?ERROR: INSTANCE not set (should be in /etc/environment)}"
 
-EC2_PUBLIC_IP="${RUM_FRONTEND_IP:-$(curl -s ifconfig.me)}"
-
 echo "============================================================"
 echo "  ThousandEyes + Splunk O11y Integration - Deploy"
 echo "============================================================"
@@ -65,7 +63,6 @@ echo "  Instance:       ${INSTANCE}"
 echo "  Environment:    ${INSTANCE}-workshop"
 echo "  Realm:          ${REALM}"
 echo "  Agent hostname: te-agent-${AGENT_HOSTNAME}"
-echo "  EC2 public IP:  ${EC2_PUBLIC_IP}"
 echo "============================================================"
 echo ""
 
@@ -110,11 +107,9 @@ print(match[0] if match else '')
   else
     echo "  Found agent ID: ${TE_AGENT_ID}"
     export TE_AGENT_ID
-    export EC2_PUBLIC_IP
     bash "${SCRIPT_DIR}/04-create-te-tests.sh"
   fi
 else
-  export EC2_PUBLIC_IP
   bash "${SCRIPT_DIR}/04-create-te-tests.sh"
 fi
 
