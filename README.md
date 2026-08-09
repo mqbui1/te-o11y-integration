@@ -298,7 +298,7 @@ kubectl run -it --rm test --image=curlimages/curl --restart=Never -n travel-plan
 | Resource | URL / Command |
 |----------|---------------|
 | Splunk APM | `https://app.us1.signalfx.com` → APM → env: `${INSTANCE}-workshop` |
-| ThousandEyes | `https://app.thousandeyes.com` → Test Settings → filter `[your-prefix]` |
+| ThousandEyes | `https://app.thousandeyes.com` → Test Settings → filter `[your-prefix]` (requires a TE UI login — see [Running with a Single ThousandEyes Account](#running-with-a-single-thousandeyes-account) if attendees don't have one) |
 | Travel planner logs | `kubectl logs -n travel-planner deployment/orchestrator -f` |
 | OTel Collector logs | `kubectl logs -l app=splunk-otel-collector -f --container otel-collector` |
 | TE Agent logs | `kubectl logs -n te-demo -l app=thousandeyes -f` |
@@ -312,11 +312,39 @@ kubectl run -it --rm test --image=curlimages/curl --restart=Never -n travel-plan
 | `scripts/02-deploy-travel-planner.sh` | Build + deploy all 5 travel planner agents |
 | `scripts/03-deploy-te-agent.sh` | Deploy ThousandEyes Enterprise Agent |
 | `scripts/04-create-te-tests.sh` | Create TE tests, inject custom headers, update ConfigMap |
+| `scripts/05-create-splunk-detectors.sh` | Create Splunk detectors/alerts (optional `ALERT_EMAIL`) |
+| `scripts/check-te-status.sh` | Check ThousandEyes test status via API — no browser/SSO login required (`--watch` to poll) |
 | `scripts/07-demo-orchestrator-down.sh` | Demo 1: scale orchestrator to 0 (entry point unreachable) |
 | `scripts/08-demo-agent-down.sh` | Demo 2: scale one agent to 0 (`AGENT=flight-agent` default) |
 | `scripts/09-demo-llm-unreachable.sh` | Demo 3: switch to openai mode with unreachable LLM URL |
 | `scripts/10-demo-restore.sh` | Restore all travel planner services to normal |
 | `teardown.sh` | Remove all deployments |
+
+## Running with a Single ThousandEyes Account
+
+Workshops typically run with **one shared ThousandEyes account** (the organizer's) rather than a separate account per attendee. This works fine for API access, but not for the browser UI — here's the distinction:
+
+**What's shared vs. what's per-attendee:**
+
+| Resource | Scope | How isolation works |
+|----------|-------|----------------------|
+| `TE_BEARER_TOKEN` / `TE_ACCOUNT_TOKEN` | Shared (organizer's account) | Same token works for everyone — it's not tied to a browser session |
+| Enterprise Agent | Per-attendee | `AGENT_HOSTNAME` → agent named `te-agent-<name>` |
+| Tests | Per-attendee | `TEST_PREFIX` → tests named `[<name>] Agent - ...` |
+| Splunk detector environment | Per-attendee | `INSTANCE` → `${INSTANCE}-workshop` |
+
+Each attendee's resources are isolated by **name**, not by account boundary — `deploy.sh` and the create scripts match/create by exact name string, so attendees never collide as long as they use unique `AGENT_HOSTNAME`/`TEST_PREFIX`/`INSTANCE` values.
+
+**The actual blocker:** `TE_BEARER_TOKEN` is a personal OAuth bearer token belonging to the organizer. It authenticates API calls fine for anyone holding it, but logging into `https://app.thousandeyes.com` in a browser requires the organizer's Cisco SSO session — attendees can't get in with just the token, and giving out the organizer's SSO credentials isn't an option.
+
+**The fix:** `scripts/check-te-status.sh` reads test status directly from the ThousandEyes API using `TE_BEARER_TOKEN` — the same token already in every attendee's shell — so nobody needs a browser login to see live pass/fail state:
+
+```bash
+bash scripts/check-te-status.sh          # one-shot status check, filtered to your TEST_PREFIX
+bash scripts/check-te-status.sh --watch  # refresh every 15s (Ctrl+C to stop)
+```
+
+This is what Modules 3, 5, 6, and 7 use instead of "log into the TE UI." If an attendee does have their own ThousandEyes UI login, the browser UI still works identically and shows more detail (charts, history, connector drilldowns) — the script is a substitute, not a replacement.
 
 ## ThousandEyes Token Guide
 

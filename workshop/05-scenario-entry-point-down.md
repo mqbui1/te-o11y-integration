@@ -16,9 +16,11 @@ This scales `orchestrator` to 0 replicas. Takes ~5 seconds.
 
 ## Step 2: Check ThousandEyes (wait ~2 minutes for the next probe cycle)
 
-`https://app.thousandeyes.com` → your `Agent - Orchestrator` test.
+```bash
+bash scripts/check-te-status.sh --watch
+```
 
-**What you should see:** availability drops to 0%, connection refused. **All other tests remain green** — flight, hotel, activity, synthesizer, LLM.
+**What you should see:** `Agent - Orchestrator` flips to `DOWN` (connection refused). **All other tests remain `UP`** — flight, hotel, activity, synthesizer, LLM. Leave `--watch` running; it refreshes every 15s. (No UI login needed — this reads the same data straight from the TE API using your `TE_BEARER_TOKEN`.)
 
 ## Step 3: Check Splunk APM
 

@@ -18,9 +18,11 @@ Scales the target specialist agent to 0 replicas.
 
 ## Step 2: Check ThousandEyes (wait ~2 minutes)
 
-`https://app.thousandeyes.com` → the specialist's health test (e.g. `Agent - Flight Specialist`).
+```bash
+bash scripts/check-te-status.sh --watch
+```
 
-**What you should see:** that one test → 0% availability. **Every other agent test and the LLM test stay green.** The failure is proven to be isolated to one orchestrator-to-agent path.
+**What you should see:** the specialist's health test (e.g. `Agent - Flight Specialist`) flips to `DOWN`. **Every other agent test and the LLM test stay `UP`.** The failure is proven to be isolated to one orchestrator-to-agent path.
 
 ## Step 3: Check Splunk APM — this is the important part
 
@@ -30,7 +32,7 @@ Scales the target specialist agent to 0 replicas.
 
 ## Step 4: Use the drilldown
 
-Click the failing span → Tags panel → click `te.test.id` → **"View in ThousandEyes"** button should appear (requires the Global Data Link from Module 3 — if it's missing, this is your cue to set it up now).
+Click the failing span → Tags panel → click `te.test.id` → **"View in ThousandEyes"** button should appear (requires the Global Data Link from Module 3 — if it's missing, this is your cue to set it up now). Note the click-through itself opens `app.thousandeyes.com` in a new tab, which needs a ThousandEyes UI login — if you don't have one, this step demonstrates the mechanism (the button appears with the correct test ID) even if you can't follow the link. Cross-check the same test with `bash scripts/check-te-status.sh` instead.
 
 ## Step 5: Check the alert
 

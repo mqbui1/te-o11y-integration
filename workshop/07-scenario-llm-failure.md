@@ -16,9 +16,11 @@ This reconfigures the agents with an invalid LLM API key and fires a test reques
 
 ## Step 2: Check ThousandEyes — this is the key signal
 
-`https://app.thousandeyes.com` → all tests.
+```bash
+bash scripts/check-te-status.sh
+```
 
-**What you should see:** all 5 agent health tests → **green**. The `LLM - OpenAI API` test → **also green**. The network path from this cluster to the LLM provider is fully healthy.
+**What you should see:** all 5 agent health tests → **`UP`**. The `LLM - OpenAI Status` test → **also `UP`**. The network path from this cluster to the LLM provider is fully healthy.
 
 **Stop and let this land**: this single observation rules out network/infra/egress as the cause, definitively, before anyone opens a log file.
 

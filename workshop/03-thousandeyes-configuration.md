@@ -26,29 +26,39 @@ Find the two things that make TE tests correlate with APM:
 
 ## Step 3: View your tests live
 
-Go to `https://app.thousandeyes.com` → Test Settings → filter by your `TEST_PREFIX`. You should see:
+Most attendees don't have a login for the ThousandEyes web UI (it's gated behind the organizer's Cisco SSO). Instead, check status straight from the API with the token already in your shell:
+
+```bash
+bash scripts/check-te-status.sh
+```
+
+You should see:
 
 | Test | Target |
 |------|--------|
 | `Agent - Orchestrator` | `/health` in-cluster |
 | `Agent - Flight/Hotel/Activity Specialist` | `/health` in-cluster |
 | `Agent - Synthesizer` | `/health` in-cluster |
-| `LLM - OpenAI API` | `api.openai.com` |
+| `LLM - OpenAI Status` | `status.openai.com` |
 | `EC2 Instance Health` | external reachability |
 
-All should show green / 100% availability right now.
+All should show `UP` / green right now. This same command (with `--watch` appended) is what you'll use to observe outages live in Modules 5–7. (If your organizer *has* set you up with a UI login, `https://app.thousandeyes.com` → Test Settings → filter by your `TEST_PREFIX` shows the same data with more detail.)
 
 ## Step 4: Confirm distributed tracing didn't silently reset
 
 This is a known TE API quirk worth knowing about: a partial `PUT` to the TE API can silently reset `distributedTracing` back to `false`.
 
 ```bash
-curl -s https://api.thousandeyes.com/v7/tests/http-server/<TEST_ID> \
+TEST_ID=$(curl -s https://api.thousandeyes.com/v7/tests \
+  -H "Authorization: Bearer ${TE_BEARER_TOKEN}" \
+  | python3 -c "import json,sys; print(next((t['testId'] for t in json.load(sys.stdin)['tests'] if t['testName']=='[${TEST_PREFIX}] Agent - Orchestrator'), ''))")
+
+curl -s https://api.thousandeyes.com/v7/tests/http-server/${TEST_ID} \
   -H "Authorization: Bearer ${TE_BEARER_TOKEN}" \
   | python3 -c "import json,sys; t=json.load(sys.stdin); print('distributedTracing:', t.get('distributedTracing')); print('customHeaders:', t.get('customHeaders'))"
 ```
 
-(Get a `TEST_ID` from the TE UI — click into any test, the ID is in the URL.)
+(No UI needed — the first command looks up the test ID by name via the API.)
 
 ## Step 5: Set up the bi-directional drilldown (one-time, if not already done by your organizer)
 
