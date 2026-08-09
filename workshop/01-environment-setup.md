@@ -13,13 +13,12 @@ Before you can trust what an observability stack tells you during an incident, y
 Pick something unique to you so your resources don't collide with other participants on the same shared ThousandEyes/Splunk accounts.
 
 ```bash
+export TE_BEARER_TOKEN="your-oauth-bearer-token"
 export AGENT_HOSTNAME="your-name"     # becomes te-agent-your-name in TE dashboard
 export TEST_PREFIX="your-name"        # prefix for all TE test names
 export LLM_PROVIDER=mock              # no LLM key needed for this workshop
 export ALERT_EMAIL="you@example.com"  # optional: email yourself on detector alerts
 ```
-
-`TE_BEARER_TOKEN` is pre-set in `/etc/environment` on workshop EC2 instances — same shared token for every attendee, same mechanism as `ACCESS_TOKEN`/`REALM`/`INSTANCE`. You never need to type or see the actual token value. (Not on a workshop instance? Export it yourself: `export TE_BEARER_TOKEN="your-oauth-bearer-token"` — see [ThousandEyes Token Guide](../README.md#thousandeyes-token-guide).)
 
 **Want alerts emailed to you?** Set `ALERT_EMAIL` above before running `deploy.sh`. Every detector created in Step 2 will include an Email notification to that address — you'll get paged for real during the scenarios in Modules 5–7. Skip it and detectors are created with no notification recipients (see Module 4 to add them later).
 

@@ -22,8 +22,8 @@ orchestrator  POST /plan
 
 1. **Confirm access** — you should have:
    - SSH access to your assigned EC2 instance
+   - `TE_BEARER_TOKEN` (ThousandEyes OAuth Bearer Token — Account Settings → User API Tokens → OAuth Bearer Token tab)
    - Splunk Observability Cloud login for viewing APM (`https://app.us1.signalfx.com`)
-   - `TE_BEARER_TOKEN` is pre-set in `/etc/environment` on your EC2 instance (shared workshop token — you don't need your own ThousandEyes account or login). If it's missing, ask your organizer or export your own — see [ThousandEyes Token Guide](../README.md#thousandeyes-token-guide).
 2. **Pick a unique identifier** — set `AGENT_HOSTNAME` and `TEST_PREFIX` to something identifying you (e.g. your name or initials) so your TE tests and agent don't collide with other participants sharing the same TE account.
 3. **Read the repo root [`README.md`](../README.md)** once for architecture context — the workshop assumes you've seen the diagram and service list there.
 

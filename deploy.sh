@@ -4,20 +4,16 @@
 # Full automated deployment script
 # ============================================================
 # Usage:
+#   export TE_ACCOUNT_TOKEN="your-te-account-group-token"
+#   export TE_BEARER_TOKEN="your-te-api-bearer-token"
 #   export AGENT_HOSTNAME="your-name"     # appears in TE dashboard
 #   export TEST_PREFIX="your-name"        # prefix for TE test names
 #   export TE_AGENT_ID=""                 # set after step 3 completes
 #   export ALERT_EMAIL="you@example.com"  # optional: email you on detector alerts
-#   export TE_BEARER_TOKEN="your-te-api-bearer-token"   # only if not pre-set (see below)
-#   export TE_ACCOUNT_TOKEN="your-te-account-group-token"  # optional, auto-fetched if unset
 #   ./deploy.sh
 #
-# The following are pre-set on Splunk workshop EC2 instances (organizer adds
-# these to /etc/environment when provisioning each attendee's instance, so
-# attendees never type or see the underlying secrets):
+# The following are pre-set on Splunk workshop EC2 instances:
 #   ACCESS_TOKEN, API_TOKEN, REALM, INSTANCE, HEC_URL, HEC_TOKEN, RUM_FRONTEND_IP
-#   TE_BEARER_TOKEN, TE_ACCOUNT_TOKEN (add these the same way once you've
-#   generated a shared ThousandEyes token for the workshop)
 #   API_TOKEN is API-scoped and used automatically to create Splunk detectors
 #   in Step 5 (ACCESS_TOKEN is ingest-only and cannot create detectors).
 # ============================================================
@@ -27,7 +23,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")/scripts" && pwd)"
 
 # ── Validate required inputs ──────────────────────────────────
-: "${TE_BEARER_TOKEN:?ERROR: TE_BEARER_TOKEN not set (should be pre-set in /etc/environment on workshop EC2 instances — export it manually if running standalone)}"
+: "${TE_BEARER_TOKEN:?ERROR: Set TE_BEARER_TOKEN (ThousandEyes API Bearer Token)}"
 
 # Auto-fetch TE_ACCOUNT_TOKEN if not provided (03-deploy-te-agent.sh will also attempt this)
 if [ -z "${TE_ACCOUNT_TOKEN}" ]; then
