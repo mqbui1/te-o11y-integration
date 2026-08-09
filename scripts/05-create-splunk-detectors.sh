@@ -30,6 +30,13 @@
 # TE test IDs are read from the te-test-ids ConfigMap (populated by
 # 04-create-te-tests.sh). The script falls back to empty strings if a
 # key is missing — alerts still fire, but the TE links will be absent.
+#
+# Optional: ALERT_EMAIL
+#   If set, every detector rule is created with an Email notification to
+#   this address, so alerts are emailed automatically in addition to
+#   showing up in the Splunk UI. If unset, detectors are created with no
+#   notification recipients (add them manually in the UI afterward).
+#     ALERT_EMAIL=you@example.com bash scripts/05-create-splunk-detectors.sh
 # ============================================================
 
 set -e
@@ -43,10 +50,16 @@ ACCESS_TOKEN="${SPLUNK_API_TOKEN:-${API_TOKEN:-${ACCESS_TOKEN:-}}}"
 : "${ACCESS_TOKEN:?ERROR: Set SPLUNK_API_TOKEN (API-scoped) or API_TOKEN}"
 
 ENV="${INSTANCE}-workshop"
+ALERT_EMAIL="${ALERT_EMAIL:-}"
 
 echo "============================================================"
 echo "  Creating Splunk detectors"
 echo "  Environment: ${ENV}"
+if [ -n "${ALERT_EMAIL}" ]; then
+  echo "  Email notifications: ${ALERT_EMAIL}"
+else
+  echo "  Email notifications: none (set ALERT_EMAIL to add one)"
+fi
 echo "============================================================"
 
 # ── Read TE test IDs from ConfigMap ──────────────────────────────────────────
@@ -73,16 +86,18 @@ echo ""
 python3 - \
   "${ACCESS_TOKEN}" "${REALM}" "${ENV}" \
   "${TE_ID_ORCH}" "${TE_ID_FLIGHT}" "${TE_ID_HOTEL}" \
-  "${TE_ID_ACTIVITY}" "${TE_ID_SYNTH}" "${TE_ID_LLM}" << 'PYEOF'
+  "${TE_ID_ACTIVITY}" "${TE_ID_SYNTH}" "${TE_ID_LLM}" \
+  "${ALERT_EMAIL}" << 'PYEOF'
 import json, sys, urllib.request, urllib.error
 
 (ACCESS_TOKEN, REALM, ENV,
  TE_ORCH, TE_FLIGHT, TE_HOTEL,
- TE_ACTIVITY, TE_SYNTH, TE_LLM) = sys.argv[1:]
+ TE_ACTIVITY, TE_SYNTH, TE_LLM, ALERT_EMAIL) = sys.argv[1:]
 
 API    = f"https://api.{REALM}.signalfx.com/v2"
 HDRS   = {"X-SF-Token": ACCESS_TOKEN, "Content-Type": "application/json"}
 TE_URL = "https://app.thousandeyes.com/view/tests/?testId={}"
+NOTIFICATIONS = [{"type": "Email", "email": ALERT_EMAIL}] if ALERT_EMAIL else []
 
 
 def api(method, path, body=None):
@@ -169,7 +184,7 @@ upsert({
         "name": "Orchestrator unreachable",
         "description": "No /plan requests for 2 minutes",
         "parameterizedBody": body1,
-        "notifications": []
+        "notifications": NOTIFICATIONS
     }]
 })
 
@@ -231,7 +246,7 @@ Note: only fires when orchestrator is healthy — avoids cascade from Scenario 1
         "name": f"{label} unreachable",
         "description": f"No requests to {svc} for 2 minutes (while orchestrator is healthy)",
         "parameterizedBody": rule_body,
-        "notifications": []
+        "notifications": NOTIFICATIONS
     })
 
 name2 = f"[Travel Planner] Scenario 2: Specialist Agent Unreachable ({ENV})"
@@ -291,7 +306,7 @@ upsert({
         "name": "Agent LLM calls failing",
         "description": "5xx errors from specialist agents",
         "parameterizedBody": body3,
-        "notifications": []
+        "notifications": NOTIFICATIONS
     }]
 })
 
@@ -303,6 +318,11 @@ PYEOF
 echo ""
 echo "============================================================"
 echo "  Detectors ready."
-echo "  Add notification recipients in Splunk:"
-echo "  Alerts -> Detectors -> [Travel Planner] Scenario * -> Edit -> Notifications"
+if [ -n "${ALERT_EMAIL}" ]; then
+  echo "  Email notifications: ${ALERT_EMAIL}"
+else
+  echo "  No email notifications set. Re-run with ALERT_EMAIL=<you@example.com>,"
+  echo "  or add recipients manually in Splunk:"
+  echo "  Alerts -> Detectors -> [Travel Planner] Scenario * -> Edit -> Notifications"
+fi
 echo "============================================================"

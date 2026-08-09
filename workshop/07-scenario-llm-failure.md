@@ -36,6 +36,8 @@ Network: healthy (confirmed by TE). Application: misconfigured credential (confi
 
 "Scenario 3: Agent LLM Calls Failing" — open the alert body. Notice the embedded decision tree: *if TE shows network healthy, check your app config (API key, base URL, provider settings); if TE shows network degraded, investigate egress routing.*
 
+If you set `ALERT_EMAIL` in Module 1, check your inbox — the same decision tree should show up in the email body.
+
 ## The verdict
 
 TE separates "can we reach the LLM network" from "can our app authenticate with the LLM API." That separation is the difference between a 5-minute fix and a 2-hour war room where the network team gets paged for nothing.

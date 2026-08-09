@@ -30,6 +30,14 @@ SPLUNK_API_TOKEN=<your-api-scoped-token> bash scripts/05-create-splunk-detectors
 
 **If you see `ERROR 401: Authentication is required`:** the script fell back to an ingest-only token. Confirm `API_TOKEN` is set (`echo $API_TOKEN`) or pass `SPLUNK_API_TOKEN` explicitly.
 
+**Want alerts emailed to you?** Set `ALERT_EMAIL` before running `deploy.sh` (or the script directly) and every detector rule is created with an Email notification recipient automatically:
+
+```bash
+ALERT_EMAIL=you@example.com bash scripts/05-create-splunk-detectors.sh
+```
+
+Without `ALERT_EMAIL`, detectors are created with no notification recipients — add them later in Splunk under Alerts → Detectors → [detector] → Edit → Notifications.
+
 ## Step 3: View them in Splunk
 
 `https://app.us1.signalfx.com` → Alerts → Detectors → filter "Travel Planner". You should see three detectors, one per scenario:

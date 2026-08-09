@@ -30,6 +30,8 @@ This scales `orchestrator` to 0 replicas. Takes ~5 seconds.
 
 Alerts → Detectors → "Scenario 1: Orchestrator Unreachable" — should have fired within ~2 minutes. Open the alert body and confirm it links to the ThousandEyes test.
 
+If you set `ALERT_EMAIL` in Module 1, check your inbox — you should have an email for this alert too, with the same triage body.
+
 ## The verdict
 
 TE isolated the failure to exactly one service, independently, before any user complaint. APM confirms zero traffic is getting through. **Time to answer "who do I call": under 2 minutes, no war room.**

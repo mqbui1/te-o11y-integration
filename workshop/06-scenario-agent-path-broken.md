@@ -36,6 +36,8 @@ Click the failing span → Tags panel → click `te.test.id` → **"View in Thou
 
 "Scenario 2: Specialist Agent Unreachable" — should be firing specifically for the agent you broke, not a generic alert. Hotel/activity/synthesizer alerts should NOT be firing.
 
+If you set `ALERT_EMAIL` in Module 1, check your inbox for the corresponding email — it should name the specific agent that's down.
+
 ## The verdict
 
 One click from a failing span to network-layer evidence. No manual copy-paste of test IDs, no cross-tool context switching.
