@@ -273,11 +273,10 @@ The orchestrator is healthy and accepting requests. Users can reach the system. 
 ### Setup
 
 ```bash
-bash scripts/08-demo-agent-down.sh                    # defaults to flight-agent
-AGENT=hotel-agent bash scripts/08-demo-agent-down.sh  # or any other agent
+bash scripts/08-demo-agent-down.sh
 ```
 
-This scales the target agent to 0 replicas. The orchestrator will still complete `travel.plan` requests — it catches the connection error, substitutes fallback text ("Flight info unavailable"), and continues to the other agents.
+This scales flight-agent to 0 replicas. The orchestrator will still complete `travel.plan` requests — it catches the connection error, substitutes fallback text ("Flight info unavailable"), and continues to the other agents.
 
 ### What to Show
 
@@ -416,7 +415,6 @@ Agent-to-agent calls, LLM timeouts, partial degradation — these failure modes 
 | Run Scenario 1 | `bash scripts/07-demo-orchestrator-down.sh` |
 | Prep Scenario 3 (during Scenario 1 wait) | `bash scripts/09-demo-llm-unreachable.sh` |
 | Run Scenario 2 | `bash scripts/08-demo-agent-down.sh` |
-| Run Scenario 2 (specific agent) | `AGENT=hotel-agent bash scripts/08-demo-agent-down.sh` |
 | Run Scenario 3 (if pre-staged) | already active — Splunk alert fires in ~2 min |
 | Restore everything | `bash scripts/10-demo-restore.sh` |
 | Check pod status | `kubectl get deployments -n travel-planner` |

@@ -10,11 +10,9 @@
 
 ```bash
 bash scripts/08-demo-agent-down.sh
-# or target a specific agent:
-AGENT=hotel-agent bash scripts/08-demo-agent-down.sh
 ```
 
-Scales the target specialist agent to 0 replicas.
+Scales flight-agent to 0 replicas.
 
 ## Step 2: Check ThousandEyes (wait ~2 minutes)
 
@@ -36,9 +34,9 @@ Click the failing span → Tags panel → click `te.test.id` → **"View in Thou
 
 ## Step 5: Check the alert
 
-"Scenario 2: Specialist Agent Unreachable" — should be firing specifically for the agent you broke, not a generic alert. Hotel/activity/synthesizer alerts should NOT be firing.
+"Scenario 2: Specialist Agent Unreachable" — should be firing specifically for flight-agent, not a generic alert. Hotel/activity/synthesizer alerts should NOT be firing.
 
-If you set `ALERT_EMAIL` in Module 1, check your inbox for the corresponding email — it should name the specific agent that's down.
+If you set `ALERT_EMAIL` in Module 1, check your inbox for the corresponding email — it should name flight-agent as the one that's down.
 
 ## The verdict
 

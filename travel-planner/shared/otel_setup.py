@@ -81,7 +81,19 @@ def setup_otel(service_name: str) -> None:
 
     # Instrumentations — LangChain spans + outbound HTTP context propagation
     LangchainInstrumentor().instrument()
-    RequestsInstrumentor().instrument()
+
+    def _set_peer_service(span, request) -> None:
+        # Sets peer.service so APM can attribute a failed connection (e.g.
+        # connection refused) to the logical downstream service instead of
+        # falling back to a synthetic host:port pseudo-service — there's no
+        # server-side span to correlate against when the connection never
+        # reaches the peer.
+        from urllib.parse import urlparse
+        hostname = urlparse(request.url).hostname
+        if hostname:
+            span.set_attribute("peer.service", hostname.split(".")[0])
+
+    RequestsInstrumentor().instrument(request_hook=_set_peer_service)
 
 
 def stamp_te_span() -> None:

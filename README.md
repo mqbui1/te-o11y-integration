@@ -232,8 +232,7 @@ bash scripts/07-demo-orchestrator-down.sh
 **Story:** The orchestrator is healthy and accepting requests, but one specialist agent is unreachable. The AI system partially degrades.
 
 ```bash
-bash scripts/08-demo-agent-down.sh                    # defaults to flight-agent
-AGENT=hotel-agent bash scripts/08-demo-agent-down.sh  # or any other agent
+bash scripts/08-demo-agent-down.sh
 ```
 
 | Tool | What you see |
@@ -314,7 +313,7 @@ kubectl run -it --rm test --image=curlimages/curl --restart=Never -n travel-plan
 | `scripts/05-create-splunk-detectors.sh` | Create Splunk detectors/alerts (optional `ALERT_EMAIL`) |
 | `scripts/check-te-status.sh` | Check ThousandEyes test status via API — no browser/SSO login required (`--watch` to poll) |
 | `scripts/07-demo-orchestrator-down.sh` | Demo 1: scale orchestrator to 0 (entry point unreachable) |
-| `scripts/08-demo-agent-down.sh` | Demo 2: scale one agent to 0 (`AGENT=flight-agent` default) |
+| `scripts/08-demo-agent-down.sh` | Demo 2: scale flight-agent to 0 |
 | `scripts/09-demo-llm-unreachable.sh` | Demo 3: switch to openai mode with unreachable LLM URL |
 | `scripts/10-demo-restore.sh` | Restore all travel planner services to normal |
 | `teardown.sh` | Remove all deployments |
