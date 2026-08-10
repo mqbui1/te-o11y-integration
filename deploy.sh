@@ -91,18 +91,23 @@ echo "      | python3 -c \"import json,sys; [print(a['agentId'], a['agentName'])
 echo ""
 
 if [ -z "${TE_AGENT_ID}" ]; then
-  echo "  TE_AGENT_ID not set — looking it up automatically..."
-  TE_AGENT_ID=$(curl -s https://api.thousandeyes.com/v7/agents \
-    -H "Authorization: Bearer ${TE_BEARER_TOKEN}" \
-    | python3 -c "
+  echo "  TE_AGENT_ID not set — waiting for agent to register online (can take 2-3 min after pod starts)..."
+  for attempt in $(seq 1 18); do
+    TE_AGENT_ID=$(curl -s https://api.thousandeyes.com/v7/agents \
+      -H "Authorization: Bearer ${TE_BEARER_TOKEN}" \
+      | python3 -c "
 import json, sys
 agents = json.load(sys.stdin).get('agents', [])
 match = [a['agentId'] for a in agents if '${AGENT_HOSTNAME}' in a.get('agentName','') and a.get('agentState') == 'online']
 print(match[0] if match else '')
 " 2>/dev/null)
+    [ -n "${TE_AGENT_ID}" ] && break
+    echo "    Attempt ${attempt}/18: agent not online yet, retrying in 10s..."
+    sleep 10
+  done
 
   if [ -z "${TE_AGENT_ID}" ]; then
-    echo "  WARNING: Could not auto-detect agent ID. Agent may not be online yet."
+    echo "  WARNING: Could not auto-detect agent ID after 3 minutes. Agent may still be registering."
     echo "  Set TE_AGENT_ID manually and re-run: bash scripts/04-create-te-tests.sh"
   else
     echo "  Found agent ID: ${TE_AGENT_ID}"
