@@ -40,7 +40,6 @@ kubectl create secret generic llm-secret \
   --namespace travel-planner \
   --from-literal=provider="openai" \
   --from-literal=api_key="sk-invalid-demo-key" \
-  --from-literal=base_url="" \
   --from-literal=model="gpt-4o-mini" \
   --from-literal=bedrock_model_id="anthropic.claude-3-5-haiku-20241022-v1:0" \
   --from-literal=aws_region="us-east-1" \
