@@ -3,3 +3,4 @@
 .env
 manifests/credentialsSecret.yaml
 terraform.tfvars
+.DS_Store
